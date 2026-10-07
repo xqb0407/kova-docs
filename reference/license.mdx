@@ -1,0 +1,67 @@
+---
+title: "开源许可与致谢"
+description: "Apache License 2.0，二次开发时的声明要求，以及项目所依赖的开源项目。"
+---
+
+## 许可证
+
+扣瓦以 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) 开源发布，
+完整文本见仓库根目录的 `LICENSE`。
+
+<Warning>
+  基于本仓库二次开发并分发时，请保留 `LICENSE` 文件与上游依赖各自的许可声明。
+  同步到 GitHub 发布仓时用 `./scripts/sync-github.sh`（见脚本头注释）。
+</Warning>
+
+## 主要依赖
+
+本项目站在这些开源项目的肩膀上（完整清单见各包 `package.json` 与 `Cargo.toml`）：
+
+| 层 | 项目 |
+| --- | --- |
+| 运行时与打包 | [Bun](https://bun.sh) · [Tauri v2](https://tauri.app) · [Next.js](https://nextjs.org) · [React](https://react.dev) |
+| 对话界面 | [assistant-ui](https://assistant-ui.com) · [Vercel AI SDK](https://ai-sdk.dev) · [Streamdown](https://streamdown.ai) · [Radix UI](https://radix-ui.com) / [shadcn/ui](https://ui.shadcn.com) · [lucide-react](https://lucide.dev) · [framer-motion](https://motion.dev) · [cmdk](https://cmdk.paco.me) |
+| Agent 运行时 | [pi-agent-core / pi-ai](https://www.npmjs.com/package/@earendil-works/pi-agent-core) · [Model Context Protocol SDK](https://github.com/modelcontextprotocol) · [croner](https://github.com/Hexagon/croner) |
+| 编辑器与终端 | [CodeMirror 6](https://codemirror.net) · [xterm.js](https://xtermjs.org) |
+| 办公插件 | [Univer](https://univer.ai) · [LeaferJS](https://www.leaferjs.com) · [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) · [exceljs](https://exceljs.dev) · [jszip](https://stuk.github.io/jszip/) |
+| 数据与状态 | [zustand](https://zustand.docs.pmnd.rs) · [zod](https://zod.dev) · [Recharts](https://recharts.org) · [rusqlite](https://github.com/rusqlite/rusqlite) · [keyring](https://github.com/hwchen/keyring-rs) · [axum](https://github.com/tokio-rs/axum) |
+| 3D 与视觉效果 | [Three.js](https://threejs.org) / [@react-three/fiber](https://r3f.docs.pmnd.rs) |
+| 中文字体 | [霞鹜文楷](https://github.com/lxgw/LxgwWenKai) · [Noto Sans/Serif SC](https://fonts.google.com/noto) · [Geist](https://vercel.com/geist) · [Inter](https://rsms.me/inter/) · [JetBrains Mono](https://www.jetbrains.com/mono/) |
+
+## 致谢
+
+从架构到细节，扣瓦大量借鉴与依赖社区成果。特别感谢：
+
+<AccordionGroup>
+  <Accordion title="assistant-ui 与 Tauri 社区">
+    分别撑起了对话式 UI 与跨平台桌面运行时。
+    这两个项目的 issue 区与文档是本仓库许多疑难的第一答案来源。
+  </Accordion>
+  <Accordion title="Earendil Works 的 pi 项目">
+    sidecar 的会话转录、上下文压缩、子代理等核心设计移植/参考自其
+    agent-runtime。代码注释中大量 `PI-Desktop 同设计` 标注即出处所在。
+  </Accordion>
+  <Accordion title="Model Context Protocol">
+    规范及其 TypeScript SDK，让工具生态的接入有章可循。
+  </Accordion>
+  <Accordion title="Univer（DreamNum）与 LeaferJS 团队">
+    表格与画布引擎的质量直接决定了办公插件的上限。
+  </Accordion>
+  <Accordion title="霞鹜文楷作者 lxgw 及所有创作者">
+    以及所有字体、图标、组件的创作者。
+  </Accordion>
+  <Accordion title="每一个认真写 issue、提 PR、在讨论区回答问题的人">
+    软件因分享而完整。若你基于本模板继续开发，也欢迎把这份谢意传递下去。
+  </Accordion>
+</AccordionGroup>
+
+## 参与贡献
+
+<CardGroup cols={2}>
+  <Card title="提 issue" icon="bug" href="https://github.com/xqb0407/kova/issues">
+    带上复现步骤、版本和你期望的行为。
+  </Card>
+  <Card title="看仓库" icon="github" href="https://github.com/xqb0407/kova">
+    README 里有完整的仓库结构、环境要求与开发命令。
+  </Card>
+</CardGroup>

@@ -1,0 +1,109 @@
+---
+title: "Modes overview"
+description: "Five things in this app get called a \"mode\": session mode, approval level, work mode, the automation policy tier — and the ones that are not modes at all."
+---
+
+Kova has five things that are commonly called a "mode". They are unrelated, and
+collapsing them is the most common misunderstanding about the app. This page separates
+them completely.
+
+## 1. Session mode (whether it may write)
+
+| | |
+| --- | --- |
+| Values | `agent` / `plan` / `ask` / `goal` |
+| Governs | The toolset, the system prompt's mode block, whether writes are possible |
+| Visible to the model | **Yes** — the mode block enters the system prompt; the model knows which tier it is in |
+| Takes effect | Immediately, including mid-run (hot-swaps the prompt and toolset) |
+
+- `agent`: the full toolset
+- `plan`: structurally read-only; writes the plan with `plan_write`, and implements only
+  after `plan_exit` approval (the model can call `plan_enter` itself)
+- `ask`: a read-only subset (no bash); when code changes are needed it proposes a tier
+  switch through the `ask_needs_work` exit tool
+- `goal`: full toolset plus cross-turn autonomy — see [Goal mode](/en/features/goal-mode)
+
+## 2. Approval level (whether it must ask)
+
+| | |
+| --- | --- |
+| Values | Confirm before changes / auto inside workspace / auto-edit / full access |
+| Governs | **Per-tool approval**: whether a change pops a card and waits for you |
+| Visible to the model | **No** — it never enters the system prompt; it is purely an execution gate.<br/>**The model does not know it is being asked** |
+| Takes effect | Immediately (the next tool call) |
+
+| Level | write / edit | bash | Config tools |
+| --- | --- | --- | --- |
+| Confirm first | Confirm | Confirm | Confirm |
+| Auto in workspace | Workspace + writable-root list auto-approved | Confirm (with "remember this exact command") | Confirm |
+| Auto-edit | All approved (including outside the workspace) | Confirm | Confirm |
+| Full access | All approved | All approved | All approved |
+
+The fine print, the writable-root list, and the three buttons are covered in the
+[Conversation workspace](/en/features/conversation).
+
+<Note>
+  `Shift+Tab` cycles through the four approval levels. The two dimensions are separate:
+  session mode decides **whether it may write**, the approval level decides **whether it
+  must ask**.
+</Note>
+
+## 3. Work mode (who it is for)
+
+| | |
+| --- | --- |
+| Values | Coding `code` / Work `work` / Design `design` |
+| Governs | Audience positioning: prompt addenda, git UI visibility, design-first layout |
+| Visible to the model | **Yes** (`appModePromptBlock`) |
+| Takes effect | Immediately |
+
+Orthogonal to session mode: that one switches permissions and shape, this one switches
+audience. The design tier has a gate — if the ui-design plugin is missing or disabled it
+walks you through installing it first.
+
+## 4. The automation policy tier (for unattended runs)
+
+| | |
+| --- | --- |
+| Values | Read-only / writable workspace / full |
+| Governs | How a scheduled task adjudicates approval-gated tools **when there is nobody to ask** |
+| Visible to the model | No (it only appears in the reason text of rejections) |
+
+<Warning>
+  Same name as the approval level, **different meaning — the easiest thing in the whole
+  app to mix up**:
+
+  - "Auto in workspace" (approval level) decides **by path**: it can tell whether the
+    target file is inside the workspace or the writable-root list;
+  - "Writable workspace" (automation tier) decides **by tool category, ignoring paths**:
+    `write` / `edit` always pass; `bash` and MCP always fail — because when nobody is
+    watching there is no "ask" option, only a hard line.
+
+  The two even look identical (the automation editor deliberately reuses the ModePicker's
+  capsule shape), so judging by name will be wrong almost every time. The automation
+  default was also tightened from `workspace-write` to `read-only` — the safe default
+  when unattended.
+</Warning>
+
+## 5. Things that are not modes at all
+
+| Name | What it actually is |
+| --- | --- |
+| Planning state | A byproduct of the `plan` tier, not an independent knob |
+| Thinking level | The model's reasoning effort — a tuning parameter, not a permission or a shape |
+| The approval card's approve / deny | A one-shot result, not a tier |
+| `plan_enter` / `plan_exit` | Tools the **model** uses to request a tier switch; `plan_exit`'s confirmation is a mode-level HITL |
+| The goal turn limit | A field on one objective, not a mode |
+
+## 6. Where each one is stored
+
+| Thing | Stored in |
+| --- | --- |
+| Session mode | `sessions.mode` column (per session) + a global "most recently used" fallback |
+| Approval level | `sessions.approval_level` column + the same fallback |
+| Work mode | `sessions.app_mode` column + a global default; sessions never switched follow the global |
+| Automation tier | The task's own `toolPolicyProfile` field |
+
+<Card title="Next" icon="arrow-right" href="/en/features/automation">
+  How this permission model adjudicates when nobody is watching.
+</Card>

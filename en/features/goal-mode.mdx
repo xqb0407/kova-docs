@@ -1,0 +1,164 @@
+---
+title: "Goal mode"
+description: "The goal tier: an explicit state machine, two stop valves, a stale-turn guard, and why there is no token budget."
+---
+
+Goal mode is the fourth session tier. Once you switch to it, **your first message is the
+objective**: the model works toward it autonomously across turns, without you pressing
+"continue", until a stop valve halts it.
+
+```
+agent  = baseTools + subagentTools + plan_enter
+plan   = read-only subset + plan_write + plan_exit
+ask    = read-only subset (no bash) + ask_needs_work
+goal   = baseTools + subagentTools + goal_complete + goal_blocked
+```
+
+`goal` gets the **full toolset** (write/edit/bash included), not the plan trio. The
+reason is blunt: goal mode's whole value is "hands off until it's done", and giving it a
+read-only toolset would make it just `plan`.
+
+## The objective is an explicit state machine
+
+A goal is not a boolean "keep running" flag. Terminal and paused states must be
+distinguishable. All transitions go through one `transitionGoal` function, and illegal
+transitions return "did not apply" rather than throwing — a state race must never take
+down the turn.
+
+```text
+(create) → active ──goal_complete──→ complete ◄──goal_blocked── blocked
+```
+
+| State | Meaning |
+| --- | --- |
+| `active` | In the autonomous loop. **It is only truly running if this tier also has a live run** |
+| `paused` | A stop valve fired / your input took over / you left goal tier / restart recovery. "Continue" returns it to active |
+| `blocked` | The model reported a deadlock itself. `resumeGoal` returns it to active |
+| `complete` | Terminal. Its exit set is empty |
+
+## Two stop valves, plus your input taking over
+
+The decision collapses into one pure function, short-circuiting in order — **the order is
+the priority**:
+
+<Steps>
+  <Step title="Provider error or abort">
+    Pause immediately.
+  </Step>
+  <Step title="Turn limit">
+    Past the objective's `maxAutoTurns` (default 300, 0 = unlimited) it pauses. The limit
+    hangs on **each objective**, not on global settings — "write the README" and
+    "refactor the whole auth stack" differ by two orders of magnitude, so a global value
+    would be wrong for half of all tasks.
+  </Step>
+  <Step title="No-progress stall">
+    Three consecutive turns with no substantive tool call and an unchanged output
+    fingerprint → pause. The fingerprint is "this turn's text → NFKC normalise → strip
+    whitespace → sha256"; a stuck model's typical behaviour is repeating the same
+    sentence with different punctuation.
+  </Step>
+</Steps>
+
+**Turns count only at settlement**: on context overflow the same turn reruns with the
+original text, so counting at injection would inflate the count.
+
+**Your input takes over**: while an active objective exists in goal tier, any message you
+send pauses it and resets the safety turn count — mid-run messages are usually course
+corrections, and that message already consumes a turn of context, so the model gets a
+fresh start.
+
+## The stale-turn guard
+
+Both exit tools (`goal_complete` / `goal_blocked`) require a `goal_id` parameter, checked
+against the current objective at execution time. A mismatch is rejected and the current
+objective's text goes back to the model.
+
+This is not defensive programming — it is a real race: while the model's `goal_complete`
+sits in the tool-call queue, you may have already sent a new message or switched
+objectives. Without the id check, "an old objective's completion marks the new objective
+complete" — and that bug's symptom is **silent**. Nothing in the logs shows it.
+
+## The token ledger accrues; it is not recomputed from the transcript
+
+`Goal.tokensUsed` is monotonically increasing: at every turn boundary the run's
+accumulated deltas fold in, additions only. The early implementation was "session total
+minus a baseline captured at objective creation", and it had three flaws:
+
+<AccordionGroup>
+  <Accordion title="It could not see subagents">
+    Subagents are separate Agents with separate contexts; their usage never lands in the
+    parent transcript. Goal tier's toolset includes the Task group — it *encourages*
+    delegation — so "the subagents did most of the work" would badly under-count. Now
+    subagents keep their own ledger and settle into the parent run, with a status guard
+    preventing double-settlement.
+  </Accordion>
+  <Accordion title="It charged paused periods to the objective">
+    The baseline was captured once, and resume did not recapture it — work you did in
+    other modes landed on this objective's bill. Accrued deltas only count while the
+    objective is active and the turn is actually running.
+  </Accordion>
+  <Accordion title="It was O(n²)">
+    The old path re-read the whole transcript file at every turn boundary — 300 turns
+    meant 300 full reads of a file that keeps growing. Accrual is four additions.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  The accounting is four components summed (input + output + cacheRead + cacheWrite),
+  matching the usage statistics page. Including cacheRead means long loops will show a
+  number an order of magnitude above intuition — that is the **global standard**, not a
+  goal-mode quirk; changing it in one place would desynchronise the two pages.
+</Note>
+
+## Why there is no token budget
+
+A fourth valve once existed: an objective could carry a token budget, and exceeding it
+transitioned to a wrap-up phase. It was **removed entirely**, because it could not be
+justified:
+
+- **You cannot predict it.** "Make the tests pass" might cost 20k or 2M tokens; any
+  number you enter is a guess. Too low amputates the objective; too high is no limit.
+- **It truncated on accumulation, not on progress.** Turn 4 and turn 24 can burn the
+  same tokens; a budget has no idea where "done" is.
+- **The wrap-up turn itself burns another model request** to write the completion note —
+  at the moment you can no longer see how much work remains.
+
+So `tokensUsed` was demoted to a display-only counter (on the persistent bar, with a
+tooltip saying it does not participate in stopping). If you want to spend less, the right
+reaction is to watch the burn and decide yourself — not to have a program brake on a
+number you never chose.
+
+## When it stops, the prompt must change its tune
+
+A subtle trap: the mode block `GOAL_MODE_PROMPT` is written for the `active` state —
+"don't stop, don't ask, the system continues automatically" — and it **does not change
+with state**.
+
+If the prompt does not change when the objective pauses, the model reads both "you are in
+an autonomous loop, don't stop to ask" and (if nothing else) "the objective is paused".
+Without the latter, it keeps grinding on the objective while the banner above says
+"paused". You see "it says paused up there, but the conversation is still going".
+
+That was the pre-fix behaviour. Now `goalPromptBlock` is state-sensitive:
+
+| State | Injected |
+| --- | --- |
+| `active` | Objective text + `goal_id` + turn count + autonomy discipline |
+| `paused` / `blocked` / `complete` | Objective text + an explicit revocation: "the mode block's discipline does not apply right now" |
+
+Which is also why "your input takes over" appeared to work (the state did change) without
+actually taking over: **the state machine stopped, the prompt did not**.
+
+## State is active ≠ the loop is running
+
+The easiest thing in this module to get wrong — one round of it produced three bugs
+("continue did nothing", "stuck after switching tiers", "restart claims it is running"),
+all with the same symptom: the bar says running, nothing is running.
+
+The only source of loop progress is **a live run reaching a turn boundary**. Setting the
+state to active starts nothing; a stopped objective is never woken by a timer. Every
+entry point that "makes the goal run again" must start that turn itself.
+
+<Card title="Next" icon="arrow-right" href="/en/features/subagents">
+  Goal mode encourages delegation — see how subagents are designed.
+</Card>

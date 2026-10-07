@@ -1,0 +1,4 @@
+.mintlify/
+node_modules/
+# 真实截图：含项目名与内部内容，不要进仓库（站上已改用 HTML 还原界面）
+assets/

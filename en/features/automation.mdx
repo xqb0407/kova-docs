@@ -1,0 +1,79 @@
+---
+title: "Automation & scheduled tasks"
+description: "Scheduled agent jobs: isolated sessions per run, catch-up on missed triggers, the unattended approval tier, and webhook notifications."
+---
+
+Automations let the agent work on a schedule: a daily standup digest, a weekly cleanup, a
+check script on the hour. Scheduling runs on [croner](https://github.com/Hexagon/croner)
+with file locking and crash recovery.
+
+## Execution shape
+
+A few deliberate decisions, all serving "do not interrupt what I am doing":
+
+<Columns cols={2}>
+  <Card title="Each trigger gets its own session">
+    Results stay in that session, reviewable later, never disturbing the conversation you
+    are in. Materialised sessions appear in the sidebar automatically with a ⚡ badge.
+  </Card>
+  <Card title="Missed triggers catch up merged">
+    When the app reopens, missed triggers **run once, merged** — not once per miss. A
+    daily report skipped for three days does not run three times.
+  </Card>
+  <Card title="Notifications land in the session">
+    Clicking a completion notification drops you directly into that run's session, with an
+    automatic fallback to the JS plugin path if the native call fails.
+  </Card>
+  <Card title="Guardrails">
+    At most 2 concurrent runs and 30 tasks; queued triggers show up in the run history.
+  </Card>
+</Columns>
+
+## Three ways to create one
+
+1. **The form** — sidebar "Automations" → a full management view: task cards, a creation
+   dialog, run history;
+2. **Ask the agent in conversation** — the sidecar registers scheduler tools, so the agent
+   can create tasks for you;
+3. **Task templates** — pick one from the template picker and adjust it.
+
+The editor's "instruction" row is followed by three composer-style capsules — **working
+directory, approval policy, and model** — and a new task's directory defaults to the
+current workspace.
+
+## The unattended approval tier
+
+When nobody can be asked, "ask" is not an option — the approval has to be a hard line.
+Scheduled tasks use their **own policy tier** (`toolPolicyProfile`), defaulted tightly to
+`read-only`:
+
+<Warning>
+  Same name as the approval level, **different meaning**. "Auto in workspace" (the
+  approval level) decides **by path**. "Writable workspace" (the automation tier) decides
+  **by tool category, ignoring paths**: `write` / `edit` always pass, `bash` and MCP
+  always fail.
+
+  They even look identical — the automation editor deliberately reuses the ModePicker's
+  capsule shape — so judging by name will be wrong almost every time. See
+  [Modes overview](/en/features/modes).
+</Warning>
+
+## Webhooks and notifications
+
+Task events (fired, done, failed) can be pushed to any service — the `automation.*`
+events appear automatically in the webhook settings dropdown.
+
+Completions can also raise a system notification. `maxConcurrentRuns` and `maxTasks` are
+local guardrails against a runaway scheduler.
+
+## The management surface
+
+<CardGroup cols={3}>
+  <Card title="Task card">"Run now / Edit / History" inline in the header; ⋯ keeps only Delete</Card>
+  <Card title="Two tabs">"Tasks | Runs" — runs aggregate across tasks, grouped by day, searchable</Card>
+  <Card title="Bulk management">Card selection / select-all, bulk enable / pause / delete (two-step delete confirmation)</Card>
+</CardGroup>
+
+<Card title="Next" icon="arrow-right" href="/en/features/remote-mobile">
+  While these run, you can watch from anywhere.
+</Card>

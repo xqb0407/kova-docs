@@ -1,0 +1,426 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Kova 扣瓦",
+  "description": "Kova（扣瓦）是一个桌面端 AI 助手：Tauri v2 原生应用，Next.js + assistant-ui 会话界面，本地 agent 运行时驱动模型对话、工具执行与会话持久化。",
+  "colors": {
+    "primary": "#18181b",
+    "light": "#a1a1aa",
+    "dark": "#d4d4d8"
+  },
+  "favicon": "/favicon.png",
+  "logo": {
+    "light": "/logo.png",
+    "dark": "/logo.png",
+    "href": "/"
+  },
+  "icons": {
+    "library": "fontawesome"
+  },
+  "navigation": {
+    "languages": [
+      {
+        "language": "zh",
+        "default": true,
+        "navbar": {
+          "links": [
+            {
+              "label": "功能",
+              "href": "/features/conversation"
+            },
+            {
+              "label": "开发",
+              "href": "/developers/architecture"
+            },
+            {
+              "label": "路线图",
+              "href": "/reference/roadmap"
+            },
+            {
+              "label": "GitHub",
+              "href": "https://github.com/xqb0407/kova"
+            },
+            {
+              "label": "EN",
+              "href": "/en"
+            }
+          ],
+          "primary": {
+            "type": "button",
+            "label": "免费下载",
+            "href": "https://github.com/xqb0407/kova/releases"
+          }
+        },
+        "footer": {
+          "socials": {
+            "github": "https://github.com/xqb0407/kova"
+          },
+          "links": [
+            {
+              "header": "功能",
+              "items": [
+                {
+                  "label": "快速开始",
+                  "href": "/quickstart"
+                },
+                {
+                  "label": "对话工作区",
+                  "href": "/features/conversation"
+                },
+                {
+                  "label": "提示词缓存",
+                  "href": "/features/prompt-cache"
+                },
+                {
+                  "label": "提示词排队",
+                  "href": "/features/prompt-queue"
+                },
+                {
+                  "label": "模式总览",
+                  "href": "/features/modes"
+                },
+                {
+                  "label": "目标模式",
+                  "href": "/features/goal-mode"
+                },
+                {
+                  "label": "子代理",
+                  "href": "/features/subagents"
+                }
+              ]
+            },
+            {
+              "header": "扩展与场景",
+              "items": [
+                {
+                  "label": "插件与工作台",
+                  "href": "/features/plugins"
+                },
+                {
+                  "label": "自动化",
+                  "href": "/features/automation"
+                },
+                {
+                  "label": "远程与移动端",
+                  "href": "/features/remote-mobile"
+                }
+              ]
+            },
+            {
+              "header": "开发者",
+              "items": [
+                {
+                  "label": "架构总览",
+                  "href": "/developers/architecture"
+                },
+                {
+                  "label": "扩展开发",
+                  "href": "/developers/extending"
+                },
+                {
+                  "label": "构建与发布",
+                  "href": "/developers/release"
+                },
+                {
+                  "label": "路线图",
+                  "href": "/reference/roadmap"
+                }
+              ]
+            },
+            {
+              "header": "项目",
+              "items": [
+                {
+                  "label": "开源许可",
+                  "href": "/reference/license"
+                },
+                {
+                  "label": "GitHub",
+                  "href": "https://github.com/xqb0407/kova"
+                },
+                {
+                  "label": "提交 issue",
+                  "href": "https://github.com/xqb0407/kova/issues"
+                }
+              ]
+            }
+          ]
+        },
+        "tabs": [
+          {
+            "tab": "开始",
+            "groups": [
+              {
+                "group": "入门",
+                "icon": "rocket",
+                "pages": [
+                  "index",
+                  "quickstart"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "功能",
+            "groups": [
+              {
+                "group": "会话与 Agent",
+                "icon": "bolt",
+                "pages": [
+                  "features/conversation",
+                  "features/prompt-queue",
+                  "features/prompt-cache",
+                  "features/modes",
+                  "features/goal-mode",
+                  "features/subagents"
+                ]
+              },
+              {
+                "group": "扩展与场景",
+                "icon": "star",
+                "pages": [
+                  "features/plugins",
+                  "features/automation",
+                  "features/remote-mobile"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "开发",
+            "groups": [
+              {
+                "group": "开发者文档",
+                "icon": "code",
+                "pages": [
+                  "developers/architecture",
+                  "developers/extending",
+                  "developers/release"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "参考",
+            "groups": [
+              {
+                "group": "参考",
+                "icon": "book",
+                "pages": [
+                  "reference/roadmap",
+                  "reference/license"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "language": "en",
+        "navbar": {
+          "links": [
+            {
+              "label": "Features",
+              "href": "/en/features/conversation"
+            },
+            {
+              "label": "Develop",
+              "href": "/en/developers/architecture"
+            },
+            {
+              "label": "Roadmap",
+              "href": "/en/reference/roadmap"
+            },
+            {
+              "label": "GitHub",
+              "href": "https://github.com/xqb0407/kova"
+            },
+            {
+              "label": "中文",
+              "href": "/"
+            }
+          ],
+          "primary": {
+            "type": "button",
+            "label": "Download",
+            "href": "https://github.com/xqb0407/kova/releases"
+          }
+        },
+        "footer": {
+          "socials": {
+            "github": "https://github.com/xqb0407/kova"
+          },
+          "links": [
+            {
+              "header": "Features",
+              "items": [
+                {
+                  "label": "Quickstart",
+                  "href": "/en/quickstart"
+                },
+                {
+                  "label": "Conversation workspace",
+                  "href": "/en/features/conversation"
+                },
+                {
+                  "label": "Prompt caching",
+                  "href": "/en/features/prompt-cache"
+                },
+                {
+                  "label": "Prompt queue",
+                  "href": "/en/features/prompt-queue"
+                },
+                {
+                  "label": "Modes overview",
+                  "href": "/en/features/modes"
+                },
+                {
+                  "label": "Goal mode",
+                  "href": "/en/features/goal-mode"
+                },
+                {
+                  "label": "Subagents",
+                  "href": "/en/features/subagents"
+                }
+              ]
+            },
+            {
+              "header": "Extending & scenarios",
+              "items": [
+                {
+                  "label": "Plugins & workspaces",
+                  "href": "/en/features/plugins"
+                },
+                {
+                  "label": "Automation",
+                  "href": "/en/features/automation"
+                },
+                {
+                  "label": "Remote & mobile",
+                  "href": "/en/features/remote-mobile"
+                }
+              ]
+            },
+            {
+              "header": "Developers",
+              "items": [
+                {
+                  "label": "Architecture",
+                  "href": "/en/developers/architecture"
+                },
+                {
+                  "label": "Extending Kova",
+                  "href": "/en/developers/extending"
+                },
+                {
+                  "label": "Build & release",
+                  "href": "/en/developers/release"
+                },
+                {
+                  "label": "Roadmap",
+                  "href": "/en/reference/roadmap"
+                }
+              ]
+            },
+            {
+              "header": "Project",
+              "items": [
+                {
+                  "label": "License",
+                  "href": "/en/reference/license"
+                },
+                {
+                  "label": "GitHub",
+                  "href": "https://github.com/xqb0407/kova"
+                },
+                {
+                  "label": "Report an issue",
+                  "href": "https://github.com/xqb0407/kova/issues"
+                }
+              ]
+            }
+          ]
+        },
+        "tabs": [
+          {
+            "tab": "Start",
+            "groups": [
+              {
+                "group": "Getting started",
+                "icon": "rocket",
+                "pages": [
+                  "en/index",
+                  "en/quickstart"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Features",
+            "groups": [
+              {
+                "group": "Conversation & agent",
+                "icon": "bolt",
+                "pages": [
+                  "en/features/conversation",
+                  "en/features/prompt-queue",
+                  "en/features/prompt-cache",
+                  "en/features/modes",
+                  "en/features/goal-mode",
+                  "en/features/subagents"
+                ]
+              },
+              {
+                "group": "Extending & scenarios",
+                "icon": "star",
+                "pages": [
+                  "en/features/plugins",
+                  "en/features/automation",
+                  "en/features/remote-mobile"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Develop",
+            "groups": [
+              {
+                "group": "Developer docs",
+                "icon": "code",
+                "pages": [
+                  "en/developers/architecture",
+                  "en/developers/extending",
+                  "en/developers/release"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Reference",
+            "groups": [
+              {
+                "group": "Reference",
+                "icon": "book",
+                "pages": [
+                  "en/reference/roadmap",
+                  "en/reference/license"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "seo": {
+    "metatags": {
+      "og:title": "Kova 扣瓦 · 桌面端 AI 助手",
+      "og:description": "跑在你自己桌面上的 AI 工作台：原生窗口、本地 agent 运行时、MCP 接入与可插拔插件。",
+      "og:type": "website"
+    }
+  },
+  "appearance": {
+    "default": "dark",
+    "strict": false
+  }
+}

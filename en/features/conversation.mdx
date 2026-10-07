@@ -1,0 +1,132 @@
+---
+title: "Conversation workspace"
+description: "Multi-threaded sessions, attachments and @-mentions, the prompt queue, checkpoints, model picker, and voice input."
+---
+
+The conversation workspace is Kova's main surface: sessions on the left, the streaming
+thread in the middle, and a file tree, terminal, and tool detail panel on the right as
+needed.
+
+## Sessions and automatic titles
+
+Many sessions coexist without interfering. You don't write the titles — the sidecar
+summarises one once a conversation has gone far enough, turning "look at this error for
+me" into "Fix TypeScript type narrowing error".
+
+## The prompt queue
+
+Underrated, but load-bearing.
+
+<Columns cols={2}>
+  <Column title="The usual approach">
+    The composer locks while the agent is running. You either wait for it to finish or
+    interrupt it — and interrupting discards whatever state the turn had produced.
+  </Column>
+  <Column title="Kova's approach">
+    The composer stays usable. What you type next enters a queue and is delivered in
+    order once the current turn ends. You can still edit the queue in the meantime.
+  </Column>
+</Columns>
+
+The design is written up in `docs/prompt-queue-design.md` in the repository.
+
+## Attachments and @-mentions
+
+- Drop in images and documents, or pull files from the workspace tree into context;
+- Use `@` to point at a specific file, directory, or subagent, so context refers to a
+  precise location instead of the whole project;
+- Images go through as multimodal parts, with dedicated image-part handling and URL
+  mirroring on the sidecar side.
+
+## Checkpoints
+
+Every tool call and file change is recorded as a checkpoint. When a change goes
+sideways, you can return to any step and redo it instead of trying to remember what you
+asked for.
+
+Checkpoints persist alongside the session and survive an app restart.
+
+## Slash commands
+
+Typing `/` in the composer opens the command palette: switch session mode, switch
+approval level, start a new session, insert a checkpoint, and more. It is powered by
+[cmdk](https://cmdk.paco.me), with fuzzy matching and full keyboard navigation.
+
+## Model picker
+
+The model dropdown sits near the composer and can be changed at any time. Switching
+affects subsequent turns only — it does not interrupt a tool call already in flight.
+
+The session mode and the approval level are **two separate dropdowns**. This is a
+frequent source of confusion:
+
+<Note>
+  Kova has five things commonly called "modes", and they are not the same thing:
+  session mode (may it write), approval level (must it ask), work mode (who it is for),
+  the automation approval level (for unattended runs), and model provider selection.
+  They are distinct controls in the interface — see the
+  [Agent engine](/en/features/agent-engine) for details.
+</Note>
+
+## Streaming rendering
+
+The thread uses [Streamdown](https://streamdown.ai) for streaming Markdown with CJK,
+math, and Mermaid support. Code blocks, tables, and diagrams are not re-laid-out on every
+arriving token — streaming message rendering has had dedicated performance work.
+
+## What the agent is doing in all this
+
+The conversation workspace looks like UI design, but several of its mechanisms exist
+precisely so the agent can work reliably.
+
+<AccordionGroup>
+  <Accordion title="@-mentions and attachments: you decide what enters the context">
+    What the model sees is **your choice**, not its guess. An `@` pointing at a specific
+    file or directory gives the agent a precise entry point to read on demand, instead
+    of swallowing the whole project in one go; images travel a separate multimodal
+    channel (see `docs/image-part-design.md` and
+    `docs/user-image-attachment-plan.md`). That is both cheaper in tokens and less
+    likely to pick the wrong file than "paste the repo and let it search".
+  </Accordion>
+  <Accordion title="The prompt queue: turning turn boundaries into something explicit">
+    What the queue gives the agent is **clarity about turn boundaries**. It knows which
+    turn your addition belongs after, so it injects in order instead of interrupting the
+    turn in flight and discarding the intermediate state. The agent can safely run a
+    long task while you finish writing the follow-up. See `docs/prompt-queue-design.md`.
+  </Accordion>
+  <Accordion title="Checkpoints: you roll back world state, not just text">
+    A checkpoint records tool calls and file changes. After a rollback the agent resumes
+    from that state without carrying the wrong assumption that "the previous attempt
+    failed this way". For a long task that is cheaper and far more predictable than
+    talking the model through its own mistake.
+  </Accordion>
+  <Accordion title="Streaming render: the agent side is an event stream, not one blob of text">
+    Between the sidecar and the frontend is an NDJSON event stream: model deltas, tool
+    start / end, approval requests, and subagent activity are separate events. The
+    frontend just renders them as different shapes in the thread — which is why tool
+    calls collapse and checkpoints are expandable. That structure falls out of the event
+    model.
+  </Accordion>
+  <Accordion title="Slash commands and the model picker: these are you steering the agent">
+    Both are **you** controlling the agent, not capabilities the agent uses. The mode,
+    approval, and model dropdowns take effect between turns and do not disturb a tool
+    call already running.
+  </Accordion>
+</AccordionGroup>
+
+## Settings surfaces
+
+Settings are organised by capability. Every module below is a real screen in the app:
+
+<CardGroup cols={3}>
+  <Card title="General & appearance">General, appearance, code theme, shortcuts, accessibility</Card>
+  <Card title="Models & secrets">Model providers, credentials and environment variables, quota top-up fields</Card>
+  <Card title="Capabilities">MCP servers, skills, subagents, computer control</Card>
+  <Card title="Data">Backup and restore, archives, memory history</Card>
+  <Card title="Remote">Remote gateway, paired devices</Card>
+  <Card title="Observability">Tracing integration, usage stats and heatmaps</Card>
+</CardGroup>
+
+<Card title="Next" icon="arrow-right" href="/en/features/agent-engine">
+  See how the agent itself works, and when it stops to ask.
+</Card>

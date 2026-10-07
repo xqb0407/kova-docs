@@ -1,0 +1,685 @@
+---
+title: "Kova"
+hideTitle: true
+toc: false
+full: true
+description: "A desktop AI assistant that runs on your own machine — native window, local agent runtime, a constrainable permission model, any MCP server, and an app you can take with you."
+---
+
+<link rel="stylesheet" href="/landing.css" />
+
+<div className="kov">
+  <div className="kov__mesh" aria-hidden="true" />
+
+  {/* ============ HERO ============ */}
+  <section className="kov__wrap kov-hero">
+    <span className="kov-eyebrow">
+      <span className="kov-eyebrow__dots"><i /><i /><i /></span>
+      Local first · your data never leaves the machine
+    </span>
+
+    <h1 className="kov-hero__title">
+      Run the agent on your own desktop
+      <span className="dim">not in another browser tab</span>
+    </h1>
+
+    <p className="kov-hero__sub">
+      Kova is a native desktop app: a streaming conversation surface driven by an
+      independent local agent runtime that handles model turns, tool execution, and
+      session persistence. What it may change, and whether it has to ask first, is decided
+      by you — not by the model.
+    </p>
+
+    <div className="kov-hero__cta">
+      <a className="kov-btn kov-btn--primary" href="https://github.com/xqb0407/kova/releases">
+        Download
+        <span className="kov-btn__icon" aria-hidden="true">↗</span>
+      </a>
+      <a className="kov-btn" href="/en/quickstart">
+        Running in five minutes
+        <span className="kov-btn__icon" aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <div className="kov-trust">
+      <span>Tauri v2 native window</span>
+      <span>Local sidecar runtime</span>
+      <span>Multi-server MCP</span>
+      <span>Expo mobile app</span>
+    </div>
+
+    <div className="kov-cue" aria-hidden="true"><span /></div>
+  </section>
+
+  {/* ============ RECREATED APP UI ============ */}
+  <section className="kov__wrap" style={{ paddingBottom: "1rem" }}>
+    <div className="kov-app kov-rv">
+      <div className="kov-app__bar">
+        <i /><i /><i /><span className="kov-app__name">Kova · Living-room lights</span>
+      </div>
+      <div className="kov-app__win kov-app__hero">
+        <div className="kov-app__side">
+          <div className="kov-app__nav is-on">+ 新对话</div>
+          <div className="kov-app__nav">自动化</div>
+          <div className="kov-app__nav">插件 / 专家 / 技能</div>
+          <div className="kov-app__nav">我的文件</div>
+          <div className="kov-app__tag">任务 / 项目</div>
+          <div className="kov-app__item is-on">Lighting scene debug <small>2h</small></div>
+          <div className="kov-app__item">Weekend cleaning script <small>1d</small></div>
+          <div className="kov-app__item">Monthly report template <small>3d</small></div>
+        </div>
+        <div className="kov-app__main kov-app__chat">
+          <div className="kov-app__bubble is-user">Dim the living-room lights to 30% and pull together an energy report.</div>
+          <div className="kov-app__tool"><b>Ran</b> light-scene write · living room → 30%</div>
+          <div className="kov-app__bubble">
+            Done — both living-room groups are at 30%. The energy report is in the right panel, and I added a 7am schedule for tomorrow.
+          </div>
+          <div className="kov-app__composer">Describe a task, @mention an agent, /open the command menu</div>
+        </div>
+        <div className="kov-app__panel">
+          <h5>Device state</h5>
+          <div className="kov-app__row"><span>Living room</span><b>30%</b></div>
+          <div className="kov-app__row"><span>Balcony</span><b>0%</b></div>
+          <div className="kov-app__row"><span>Sensors</span><b>3 在线</b></div>
+          <div className="kov-app__row"><span>Schedules</span><b>2 条</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ THREE CHOICES ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Why local</span>
+    <h2 className="kov-h2">Three different bets</h2>
+    <p className="kov-lede">
+      Most AI assistants are either a browser tab or a chat box with everything pushed
+      through someone else's cloud. Kova takes another road: the app is local, the model
+      is swappable, the agent is constrainable.
+    </p>
+
+    <div className="kov-bento kov-bento--trio">
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">01 / Local first</div>
+          <h3 className="kov-card__title">Data and credentials bypass the middleman</h3>
+          <p className="kov-card__body">
+            Sessions, memory, subagent definitions, and MCP configuration live in
+            <code>~/.kova/</code> and your workspace's <code>.kova/</code>. API keys go to
+            the system keychain — on macOS, service name
+            <code>com.kova.assistant</code>. You can open the directory and see exactly
+            what it stores.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">~/.kova/</span>
+            <span className="kov-chip">Keychain</span>
+            <span className="kov-chip">rusqlite</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">02 / Swappable</div>
+          <h3 className="kov-card__title">Changing models is a dropdown</h3>
+          <p className="kov-card__body">
+            Configure several providers in the model picker. Tool execution, session
+            persistence, context compaction, and permission checks all run in the local
+            sidecar, independent of the model —
+            <b style={{ color: "var(--kov-ink)" }}>switching models bypasses no approval</b>.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">Multi-provider</span>
+            <span className="kov-chip">Per-turn switch</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">03 / Constrainable</div>
+          <h3 className="kov-card__title">"Stop and ask" is local logic, not model manners</h3>
+          <p className="kov-card__body">
+            Suspending, approving, denying, and rolling back happen in deterministic code.
+            When the model says "done", that alone does not count — exit tools carry an
+            objective id check, and a stale completion signal is rejected.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">stale-turn guard</span>
+            <span className="kov-chip">prefix rules</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ TURN LOOP ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">The loop</span>
+    <h2 className="kov-h2">What actually happens in a conversation</h2>
+    <p className="kov-lede">
+      You see a streaming thread. Behind it runs a deterministic loop — and only one of
+      its steps belongs to the model. The rest is local code.
+    </p>
+
+    <div className="kov-loop">
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">Assemble context</h3>
+        <p className="kov-loop__body">
+          Pull session history, inject long-term memory and loaded skills, attach the
+          content of @-mentioned files and any attachments. If the context is filling up,
+          compact first, preserving key decisions and produced files.
+        </p>
+      </div>
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">Call the model</h3>
+        <p className="kov-loop__body">
+          Hand it to the currently selected model; receive incremental text or a set of
+          tool calls. Switching models affects only this step.
+        </p>
+      </div>
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">Adjudicate each tool call</h3>
+        <p className="kov-loop__body">
+          Every call passes the <b style={{ color: "var(--kov-ink)" }}>session mode</b>
+          (may this tier write?) and then the
+          <b style={{ color: "var(--kov-ink)" }}>approval level</b> (must this tier ask?).
+          Both must allow it.
+        </p>
+      </div>
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">Stop and ask when required</h3>
+        <p className="kov-loop__body">
+          An approval suspends the turn with state preserved; when your answer arrives it
+          resumes from exactly that step. A denied call returns to the model as a blocked
+          result so it can take another route instead of deadlocking.
+        </p>
+      </div>
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">Execute, feed back, checkpoint</h3>
+        <p className="kov-loop__body">
+          The tool runs inside the sidecar, its result is appended to the context, and the
+          loop returns to step two. Every call and file change becomes a checkpoint you can
+          return to.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ PERMISSIONS SPEC ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Permission model</span>
+    <h2 className="kov-h2">It does not quietly decide for you</h2>
+    <p className="kov-lede">
+      In the UI these are two separate dropdowns, and the combination is the actual
+      behaviour. Collapsing them is the most common misunderstanding about Kova.
+    </p>
+
+    <div className="kov-spec">
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">agent</span>
+          <span className="kov-spec__tag">Session mode</span>
+        </div>
+        <p className="kov-spec__val">
+          The full toolset. The default — reads, writes, runs commands, dispatches
+          subagents.
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">plan</span>
+          <span className="kov-spec__tag">Session mode</span>
+        </div>
+        <p className="kov-spec__val">
+          Structurally read-only. It can read and plan, then uses <code>plan_exit</code> to
+          get approval before handing back to agent to implement. Planning and
+          implementation are separated by permission, so the reading phase never holds
+          write rights.
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">ask</span>
+          <span className="kov-spec__tag">Session mode</span>
+        </div>
+        <p className="kov-spec__val">
+          A read-only subset with no <code>bash</code>. For "just tell me, don't touch
+          anything".
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">goal</span>
+          <span className="kov-spec__tag">Session mode</span>
+        </div>
+        <p className="kov-spec__val">
+          Full toolset plus cross-turn autonomy. Your first message is the objective; the
+          model works to completion without you pressing continue. See
+          <a href="/en/features/goal-mode">goal mode</a>.
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">workspace-write</span>
+          <span className="kov-spec__tag">Approval level</span>
+        </div>
+        <p className="kov-spec__val">
+          Inside the workspace and the writable-root list, writes are auto-approved; bash
+          still asks, with "remember this class of command" generating prefix rules.
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">The approval card</span>
+          <span className="kov-spec__tag">Three buttons only</span>
+        </div>
+        <p className="kov-spec__val">
+          Deny, just this once, allow and remember. The last is guarded by the
+          writable-root list and can never grant write access to a directory you did not
+          approve.
+        </p>
+      </div>
+    </div>
+
+    <div className="kov-panel">
+      <div className="kov-panel__core">
+        <div className="kov-panel__head">
+          <i /><i /><i /><span>Said plainly</span>
+        </div>
+        <div className="kov-panel__body">
+          The <code>workspace-write</code> level <b style={{ color: "var(--kov-accent)" }}>does not contain bash</b>
+          {" "}— a command can reach any path outside the workspace through the shell. That
+          is a deliberate trade-off, covered in its own section of
+          <code>docs/permission-modes.md</code>. When you need real isolation, use a sandbox
+          or a container.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ CAPABILITIES BENTO ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Capabilities</span>
+    <h2 className="kov-h2">Core capabilities</h2>
+
+    <div className="kov-bento kov-bento--lead">
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">Conversation</div>
+          <h3 className="kov-card__title">Multi-threaded sessions, attachments, and the prompt queue</h3>
+          <p className="kov-card__body">
+            Session management, attachments and @-mentions, slash commands, a model picker,
+            voice input, and AI-summarised titles. The prompt queue keeps the composer
+            usable while the agent is still working, and its entries persist into the
+            session transcript — refresh, restart, and thread switches lose nothing.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">prompt queue v2</span>
+            <span className="kov-chip">checkpoints</span>
+            <span className="kov-chip">streamdown</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">Agent runtime</div>
+          <h3 className="kov-card__title">A separate sidecar process</h3>
+          <p className="kov-card__body">
+            Long jobs never block the interface, a frontend crash never kills work in
+            progress, and every surface reuses the same runtime. Coding, browser, HTTP, and
+            screenshot tools ship in the box, with context compaction and long-term memory.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">NDJSON over stdio</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">Subagents</div>
+          <h3 className="kov-card__title">Task / TaskWait / TaskList / TaskStop</h3>
+          <p className="kov-card__body">
+            Independent contexts and toolsets, three-layer discovery (built-in / user /
+            plugin), and an activity trail written as it runs — replayable after a restart.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">activity replay</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">MCP</div>
+          <h3 className="kov-card__title">Multi-server connection pool</h3>
+          <p className="kov-card__body">
+            Two-layer config merging, output guards, OAuth, and calls that pass through the
+            same approval flow with an audit trail.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ MORE SCREENS ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Interface</span>
+    <h2 className="kov-h2">From setup to stats, all on your own machine</h2>
+    <div className="kov-shots">
+      <div className="kov-app kov-app--solo">
+        <div className="kov-app__bar"><i /><i /><i /><span className="kov-app__name">New chat</span></div>
+        <div className="kov-app__win">
+          <div className="kov-app__side">
+            <div className="kov-app__nav is-on">+ New chat</div>
+            <div className="kov-app__nav">Automations</div>
+            <div className="kov-app__nav">Plugins / Experts / Skills</div>
+            <div className="kov-app__nav">My files</div>
+          </div>
+          <div className="kov-app__main kov-app__chat">
+            <p className="kov-app__sub">Pick a direction, or just say what you need.</p>
+            <div className="kov-app__chips">
+              <span className="kov-app__chip">Inspiration</span>
+              <span className="kov-app__chip">Writing</span>
+              <span className="kov-app__chip">Code</span>
+              <span className="kov-app__chip">Analysis</span>
+              <span className="kov-app__chip">Plugins</span>
+            </div>
+            <div className="kov-app__composer">Describe a task, @mention an agent, /open the command menu</div>
+          </div>
+        </div>
+      </div>
+      <div className="kov-app kov-app--solo">
+        <div className="kov-app__bar"><i /><i /><i /><span className="kov-app__name">Settings · Usage</span></div>
+        <div className="kov-app__win">
+          <div className="kov-app__side">
+            <div className="kov-app__nav">Models</div>
+            <div className="kov-app__nav">Credentials</div>
+            <div className="kov-app__nav">MCP servers</div>
+            <div className="kov-app__nav is-on">Usage</div>
+            <div className="kov-app__nav">Observability</div>
+            <div className="kov-app__nav">Backup</div>
+          </div>
+          <div className="kov-app__main">
+            <h5 style={{ margin: "0 0 0.7rem", fontSize: "0.9rem" }}>Token activity</h5>
+            <div className="kov-app__bar-chart">
+              <span style={{ height: "38%" }} /><span style={{ height: "62%" }} />
+              <span style={{ height: "45%" }} /><span style={{ height: "88%" }} />
+              <span style={{ height: "54%" }} /><span style={{ height: "72%" }} />
+              <span style={{ height: "96%" }} />
+            </div>
+            <div className="kov-app__row" style={{ marginTop: "0.8rem" }}><span>Total tokens</span><b>1.28M</b></div>
+            <div className="kov-app__row"><span>Cache hit rate</span><b>86%</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ FEATURE PAGES ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Feature tour</span>
+    <h2 className="kov-h2">The feature tour</h2>
+    <p className="kov-lede">
+      Ten topics, each with a full design write-up — from the conversation workspace to
+      prompt caching. Click through.
+    </p>
+
+    <div className="kov-bento" style={{ marginTop: "2.6rem" }}>
+      <a className="kov-bezel" href="/en/features/conversation" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">01</div>
+          <h3 className="kov-card__title">Conversation workspace</h3>
+          <p className="kov-card__body">Multi-threaded sessions, attachments and @-mentions, checkpoint rollback, slash commands and voice input.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/prompt-queue" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">02</div>
+          <h3 className="kov-card__title">Prompt queue v2</h3>
+          <p className="kov-card__body">QueueEngine snapshot persistence, three idempotent sync rules — queue entries keep even their images.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/modes" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">03</div>
+          <h3 className="kov-card__title">Modes overview</h3>
+          <p className="kov-card__body">Five things called "mode", fully separated: session mode, approval level, work mode, automation tier.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/goal-mode" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">04</div>
+          <h3 className="kov-card__title">Goal mode</h3>
+          <p className="kov-card__body">An explicit state machine, two stop valves, the stale-turn guard, and why there is deliberately no token budget.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/subagents" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">05</div>
+          <h3 className="kov-card__title">Subagent design</h3>
+          <p className="kov-card__body">The Task quartet, three-layer discovery, persistent activity replay, and token settlement.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/prompt-cache" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">06</div>
+          <h3 className="kov-card__title">Prompt caching</h3>
+          <p className="kov-card__body">prompt_cache_key shard routing, shaped-alike summary requests, two miss-accounting standards.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/plugins" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">07</div>
+          <h3 className="kov-card__title">Plugins &amp; workspaces</h3>
+          <p className="kov-card__body">The office / canvas / ui-design workspaces and the local plugin marketplace.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/automation" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">08</div>
+          <h3 className="kov-card__title">Automation</h3>
+          <p className="kov-card__body">Scheduled tasks, merged catch-up runs, the unattended approval tier, and webhook notifications.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/remote-mobile" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">09</div>
+          <h3 className="kov-card__title">Remote &amp; mobile</h3>
+          <p className="kov-card__body">Pairing codes for tokens, three network paths, the Expo app, and the security boundary.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/agent-engine" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">10</div>
+          <h3 className="kov-card__title">Agent engine</h3>
+          <p className="kov-card__body">The turn lifecycle, built-in toolset, context compaction, and long-term memory.</p>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  {/* ============ WORKSPACES ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Workspaces</span>
+    <h2 className="kov-h2">Workspaces you actually open</h2>
+    <p className="kov-lede">
+      A plugin is not a paragraph of prompt text — it is an interface you operate. The key
+      is that its output is structured data, so the agent edits the same document instead
+      of handing you a picture.
+    </p>
+
+    <div className="kov-bento kov-bento--trio">
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">office</div>
+          <h3 className="kov-card__title">Slides &amp; spreadsheets</h3>
+          <p className="kov-card__body">
+            Slide decks with per-slide editing, presentation mode, and <code>.pptx</code>
+            export; a spreadsheet powered by the Univer engine with formulas, styles,
+            merges, and frozen panes.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">Univer</span>
+            <span className="kov-chip">pptxgenjs</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">canvas</div>
+          <h3 className="kov-card__title">Infinite canvas</h3>
+          <p className="kov-card__body">
+            Text, shapes, images, Mermaid, tables, charts, and embedded web pages placed
+            freely, exportable as a single SVG.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">*.canvas.json</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">ui-design</div>
+          <h3 className="kov-card__title">A Figma-style design workspace</h3>
+          <p className="kov-card__body">
+            Pages, artboards, a layer tree, and a full property inspector. It ships its own
+            MCP server, so the agent drives canvas nodes directly — add, edit, delete,
+            align, distribute, stack, and group.
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">Direct MCP control</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ ARCHITECTURE ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Architecture</span>
+    <h2 className="kov-h2">Four layers</h2>
+    <p className="kov-lede">
+      Splitting the agent into its own process is deliberate: long jobs never block the
+      interface, a frontend crash never kills work in progress, and every surface reuses
+      the same runtime. See <a href="/en/developers/architecture">Architecture</a>.
+    </p>
+
+    <div className="kov-panel">
+      <div className="kov-panel__core">
+        <div className="kov-panel__head">
+          <i /><i /><i /><span>repo map</span>
+        </div>
+        <div className="kov-panel__body">
+          <pre><code>{`apps/desktop      Next.js + assistant-ui conversation UI, Tauri v2 host
+apps/sidecar     pi-agent runtime (Bun/TS), NDJSON over stdio
+apps/mobile      Expo SDK 57 + RN 0.86, via the desktop gateway /ws
+packages         pi-protocol cross-surface contract · shared
+plugins          office · canvas · ui-design · marketplace.json`}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ QUICKSTART ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Get started</span>
+    <h2 className="kov-h2">Running in five minutes</h2>
+    <p className="kov-lede">
+      You need <a href="https://bun.sh">Bun</a>, a Rust toolchain, and Node.js. Full
+      details in the <a href="/en/quickstart">Quickstart</a>.
+    </p>
+
+    <div className="kov-panel">
+      <div className="kov-panel__core">
+        <div className="kov-panel__head">
+          <i /><i /><i /><span>Terminal</span>
+        </div>
+        <div className="kov-panel__body">
+          <pre><code>{`git clone https://github.com/xqb0407/kova.git
+cd kova
+bun install
+bun run tauri:dev`}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ WHO ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Who it's for</span>
+    <h2 className="kov-h2">Who it is for</h2>
+
+    <div className="kov-spec">
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">People who want to work locally</span>
+          <span className="kov-spec__tag">Data</span>
+        </div>
+        <p className="kov-spec__val">
+          Code, data, and files stay on your own machine, and you would rather not upload a
+          workspace to somebody's server just to use an assistant.
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">People wiring up lots of tools</span>
+          <span className="kov-spec__tag">Integration</span>
+        </div>
+        <p className="kov-spec__val">
+          You already run several MCP servers and want one place that manages them and
+          records every call.
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">People who need real documents</span>
+          <span className="kov-spec__tag">Output</span>
+        </div>
+        <p className="kov-spec__val">
+          What you need is a <code>.pptx</code> and <code>.xlsx</code> you can actually
+          open — not a preview image in a chat box.
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">Teams who want to build on it</span>
+          <span className="kov-spec__tag">Engineering</span>
+        </div>
+        <p className="kov-spec__val">
+          A template you can build on: a clear monorepo, the cross-surface contract
+          concentrated in <code>packages/pi-protocol</code>, and rebranding in one command.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ CLOSING ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <div className="kov-close">
+      <h2 className="kov-close__title">Install it, or read two lines of code</h2>
+      <p className="kov-close__sub">
+        Grab a build, configure a model, and start a conversation. To change it, every
+        directory in the monorepo maps to one clear responsibility.
+      </p>
+      <div className="kov-hero__cta">
+        <a className="kov-btn kov-btn--primary" href="https://github.com/xqb0407/kova/releases">
+          Download
+          <span className="kov-btn__icon" aria-hidden="true">↗</span>
+        </a>
+        <a className="kov-btn" href="/en/developers/architecture">
+          Architecture
+          <span className="kov-btn__icon" aria-hidden="true">→</span>
+        </a>
+      </div>
+    </div>
+
+    <p className="kov-foot">
+      Kova — released under the Apache License 2.0. If you redistribute a derivative, keep
+      the LICENSE file and the license notices of the upstream dependencies.
+    </p>
+  </section>
+</div>

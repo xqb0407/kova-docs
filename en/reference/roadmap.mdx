@@ -1,0 +1,90 @@
+---
+title: "Roadmap"
+description: "What has shipped, what is in progress on mobile and remote capability, and what is still on the backlog."
+---
+
+> A living document: updated as the project iterates. Priorities are open to discussion
+> in issues.
+
+## Shipped
+
+<CardGroup cols={2}>
+  <Card title="Desktop app" icon="check">
+    Multi-turn conversations, attachments, @-mentions, checkpoint rollback, prompt
+    queueing, model picker, slash commands, voice input.
+  </Card>
+  <Card title="pi-agent sidecar runtime" icon="check">
+    MCP connectivity, skill loading, subagent scheduling, long-term memory, context
+    compaction, built-in coding / browser / HTTP / screenshot tools.
+  </Card>
+  <Card title="Plugin system & office suite" icon="check">
+    The panel system and local marketplace, with office, canvas, and ui-design
+    workspaces.
+  </Card>
+  <Card title="Credentials & system integration" icon="check">
+    Keychain-based credential management, webhook notifications, scheduled tasks, and
+    appearance themes.
+  </Card>
+  <Card title="LAN remote access" icon="check">
+    Desktop gateway + pairing code + browser web client.
+  </Card>
+  <Card title="Mobile app" icon="check">
+    Expo + React Native over the same WebSocket gateway; QR pairing with tokens stored
+    in the Keychain / Keystore.
+  </Card>
+</CardGroup>
+
+## In progress: the mobile app
+
+The native shell has landed (Expo, not Tauri mobile — it reuses the desktop gateway's
+`/ws` protocol and shares its origin with the web client). What remains is what mobile
+genuinely needs:
+
+- **Push notifications** — task complete, awaiting approval, scheduled task finished.
+  This needs device-token registration and foreground keep-alive on the gateway side;
+- **Biometric unlock + token rotation** — tokens currently never expire, and revocation
+  is limited to "revoke all devices" on the desktop;
+- **Offline drafts and weak-network behaviour** — queueing and in-flight stream resumption
+  across cell/Wi-Fi switches;
+- **Narrow-screen interaction polish** — gestures, attachment picking, session list reflow.
+
+## In progress: strengthening remote access
+
+Moving from "works on the same Wi-Fi" to "safe to use away from home":
+
+- **End-to-end encryption** — negotiate keys at pairing time, encrypt WS traffic on the
+  desktop so tunnels and relays see nothing in plaintext;
+- **Stable public access** — escape throwaway tunnel URLs, with fixed domains and
+  automatic reconnection;
+- **Disconnection and recovery** — backfill messages missed during a WS outage, and
+  reconcile session state after reconnect;
+- **Concurrent devices** — input arbitration and view sync across desktop plus multiple
+  remotes online at once;
+- **Remote approval** — push dangerous-operation confirmations to paired devices and let
+  them be approved from the phone.
+
+## Backlog
+
+<CardGroup cols={2}>
+  <Card title="Release matrix" icon="tag">
+    Code signing and auto-update for both macOS and Windows.
+  </Card>
+  <Card title="Performance" icon="gauge">
+    Cold-start latency and memory footprint in long sessions.
+  </Card>
+  <Card title="Plugin ecosystem" icon="puzzle-piece">
+    More official example plugins and third-party marketplace integration.
+  </Card>
+  <Card title="Session migration" icon="right-left">
+    User-facing entry points for moving sessions across devices and restoring backups.
+  </Card>
+</CardGroup>
+
+## Contributing
+
+Nothing here is locked in — open an issue to discuss priorities. A useful issue carries
+the concrete scenario, how you work around it today, and the behaviour you expected.
+
+<Card title="License" icon="scale-balanced" href="/en/reference/license">
+  Apache-2.0, and the notices you must keep.
+</Card>

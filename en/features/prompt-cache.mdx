@@ -1,0 +1,125 @@
+---
+title: "Prompt caching"
+description: "prompt_cache_key shard routing, session affinity headers, compaction summaries shaped like chat requests, and the two ways cache misses are counted."
+---
+
+In a long session, most of the token bill is not generation — it is **re-sending the
+same history** every turn. Provider-side prefix caching bills the unchanged prefix at
+cache rates, provided two things hold: the prefix is byte-for-byte identical, and the
+request lands on the same cache shard. The sidecar has a deliberate design for both.
+
+## Routing: keep one session on one shard
+
+<Columns cols={2}>
+  <Column title="prompt_cache_key">
+    OpenAI-style APIs shard by `prompt_cache_key`. The sidecar derives it from the
+    session id (length-clamped) and injects it into the outbound payload through a hook —
+    same session, same key, same shard.
+  </Column>
+  <Column title="Session affinity headers">
+    Behind a gateway or relay, the **infrastructure** also has to route the session to the
+    same upstream. Every request carries `x-session-affinity` and `X-Session-Id`.
+  </Column>
+</Columns>
+
+Without these, requests land on random shards and an identical prefix is recomputed in
+full anyway — and the symptom is silent: the bill notices before you do.
+
+## The long-retention switch
+
+```bash
+PI_CACHE_RETENTION=long   # Anthropic 1h / OpenAI 24h
+```
+
+Standard TTL by default; the switch opts into each provider's long cache tier. The
+compat layer gates it and degrades automatically to the standard tier when a model does
+not support it, instead of erroring.
+
+## A compaction summary request must be shaped like a chat request
+
+The most hidden and most valuable rule in this design.
+
+Compaction itself sends a model request to produce the summary. If that request's
+system, tools, and parameters differ from the chat path, the server-side prefix cache
+hits nothing — compaction becomes a full-price recompute. This was measured in
+production: a summary request hit only 128 tokens (one cache block) before diverging.
+
+So the summary request is deliberately assembled **identically to chat**:
+
+<Steps>
+  <Step title="Same system (messages[0]), same tools, same affinity headers and prompt_cache_key">
+    The only difference is one summary instruction appended at the tail — so the prefix
+    cache can hit the entire conversation.
+  </Step>
+  <Step title="Same thinking parameters">
+    Some endpoints fold parameters into the cache key (Anthropic keys on the thinking
+    budget derived from max_tokens), so mismatched parameters break an otherwise
+    identical prefix.
+  </Step>
+  <Step title="Same long-retention switch">
+    Shares `PI_CACHE_RETENTION` with the chat path.
+  </Step>
+</Steps>
+
+### Payload fingerprints: locating a divergence
+
+The two assembly paths (chat via the convertToLlm chain, summaries via their own
+assembly) build request bodies separately, so "looks the same, differs by bytes" is
+possible. Each of the three likeliest divergence points gets a short hash plus a size —
+**tools (count + fingerprint), the first system message (length + fingerprint), and the
+message count** — logged together with reasoning / max_tokens and friends at event level.
+Comparing two log lines pins down which segment diverged. No more guessing.
+
+## Counting hits: two standards
+
+<Columns cols={2}>
+  <Column title="Legacy (misses)">
+    A turn counts as a miss when input ≥ 2,000 and ≥ 5% of the prompt. The flaw: it
+    cannot tell "new content this turn" (tool results are new by definition) from "the
+    prefix was recomputed" — about 90% of reports were false positives. Kept only as the
+    legacy panel denominator.
+  </Column>
+  <Column title="Current (authoritative)">
+    Recomputed tokens for a turn = **min(previous prompt, current prompt) − cacheRead**,
+    floored at 1,024. That is what the turn actually overpaid, with lastMiss attribution:
+    idle past TTL, or a model switch.
+  </Column>
+</Columns>
+
+The hit rate itself is `cacheRead / (input + cacheRead + cacheWrite)`, and the panel
+shows a **recent 10-request window** — cumulative numbers get diluted by cold starts and
+rebuilds; only a short window shows steady state.
+
+<Note>
+  Two deliberate exemptions: a cold-start first turn has no prefix that "should have
+  hit", so it does not count; and a session whose provider never reported cache activity
+  is excluded from recompute accounting entirely — otherwise sessions on providers that
+  do not report caching would all register as misses.
+</Note>
+
+## Compaction and caching pull against each other
+
+Compaction replaces history with a summary, so the prefix necessarily changes and the
+first turn after compaction is **expected to recompute in full**. Statistics track those
+as `rebuilds`, separate from real misses.
+
+Compaction's own invariants (see the header note in
+`apps/sidecar/pi-agent/src/agent/context.ts`):
+
+- It happens only at **turn boundaries**; the summary replaces the entire history with no
+  original tail kept;
+- The checkpoint row persists to JSONL while full message rows are retained, so UI
+  history is unaffected;
+- If summary generation fails, a fresh_window fallback kicks in — no model request, a
+  fixed rollover marker is loaded, and the session continues.
+
+<Warning>
+  A known approximation: the transcript cannot distinguish "first turn after restoring a
+  session post-restart" from "first turn after compaction", so a restore right after a
+  checkpoint is counted as a rebuild — off by at most one turn, in exchange for zero new
+  persistence. A deliberate trade-off recorded in the code comments, not a bug.
+</Warning>
+
+<Card title="Next" icon="arrow-right" href="/en/features/goal-mode">
+  With the cache accounting settled, goal mode keeps a ledger of its own.
+</Card>

@@ -1,0 +1,656 @@
+---
+title: "Kova 扣瓦"
+hideTitle: true
+toc: false
+full: true
+description: "跑在你自己桌面上的 AI 助手：原生窗口、本地 agent 运行时、可约束的权限模型、任意 MCP 服务器接入，以及能带出门的移动端。"
+---
+
+<link rel="stylesheet" href="/landing.css" />
+
+<div className="kov">
+  <div className="kov__mesh" aria-hidden="true" />
+
+
+  {/* ============ HERO ============ */}
+  <section className="kov__wrap kov-hero">
+    <span className="kov-eyebrow">
+      <span className="kov-eyebrow__dots"><i /><i /><i /></span>
+      本地优先 · 数据与凭据不出机器
+    </span>
+
+    <h1 className="kov-hero__title">
+      在自己的桌面上跑 Agent
+      <span className="dim">而不是又一个网页聊天框</span>
+    </h1>
+
+    <p className="kov-hero__sub">
+      扣瓦（Kova）是一个原生桌面应用：内嵌流式会话界面，由独立的本地 Agent 运行时
+      驱动模型对话、工具执行与会话持久化。它不能改什么、要不要先问你，
+      都由你而不是模型决定。
+    </p>
+
+    <div className="kov-hero__cta">
+      <a className="kov-btn kov-btn--primary" href="https://github.com/xqb0407/kova/releases">
+        下载安装包
+        <span className="kov-btn__icon" aria-hidden="true">↗</span>
+      </a>
+      <a className="kov-btn" href="/quickstart">
+        五分钟跑起来
+        <span className="kov-btn__icon" aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <div className="kov-trust">
+      <span>Tauri v2 原生窗口</span>
+      <span>本地 sidecar 运行时</span>
+      <span>MCP 多服务器接入</span>
+      <span>Expo 移动端</span>
+    </div>
+
+    <div className="kov-cue" aria-hidden="true"><span /></div>
+  </section>
+
+  {/* ============ RECREATED APP UI ============ */}
+  <section className="kov__wrap" style={{ paddingBottom: "1rem" }}>
+    <div className="kov-app kov-rv">
+      <div className="kov-app__bar">
+        <i /><i /><i /><span className="kov-app__name">扣瓦 · 客厅灯光助手</span>
+      </div>
+      <div className="kov-app__win kov-app__hero">
+        <div className="kov-app__side">
+          <div className="kov-app__nav is-on">+ 新对话</div>
+          <div className="kov-app__nav">自动化</div>
+          <div className="kov-app__nav">插件 / 专家 / 技能</div>
+          <div className="kov-app__nav">我的文件</div>
+          <div className="kov-app__tag">任务 / 项目</div>
+          <div className="kov-app__item is-on">灯光场景调试 <small>2 小时</small></div>
+          <div className="kov-app__item">周末清洁脚本 <small>1 天</small></div>
+          <div className="kov-app__item">月度报表模板 <small>3 天</small></div>
+        </div>
+        <div className="kov-app__main kov-app__chat">
+          <div className="kov-app__bubble is-user">把客厅的灯调到 30%，顺手生成一份能耗报告。</div>
+          <div className="kov-app__tool"><b>已执行</b> 灯光场景写入 · 客厅灯组 → 30%</div>
+          <div className="kov-app__bubble">
+            已经调好了：客厅两组灯都到 30%。能耗报告在右侧面板，另外把明早 7 点的定时也加上了。
+          </div>
+          <div className="kov-app__composer">输入任务指令 @选择智能体，/打开指令菜单</div>
+        </div>
+        <div className="kov-app__panel">
+          <h5>设备状态</h5>
+          <div className="kov-app__row"><span>客厅灯组</span><b>30%</b></div>
+          <div className="kov-app__row"><span>阳台灯组</span><b>0%</b></div>
+          <div className="kov-app__row"><span>传感器</span><b>3 在线</b></div>
+          <div className="kov-app__row"><span>定时任务</span><b>2 条</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ THREE CHOICES ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Why local</span>
+    <h2 className="kov-h2">三个不一样的选择</h2>
+    <p className="kov-lede">
+      大多数 AI 助手要么是浏览器标签页，要么是把一切都塞进云端的聊天框。
+      扣瓦换了一条路：应用在本地，模型可选，agent 可约束。
+    </p>
+
+    <div className="kov-bento kov-bento--trio">
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">01 / 本地优先</div>
+          <h3 className="kov-card__title">数据与凭据不经过中间服务器</h3>
+          <p className="kov-card__body">
+            会话、记忆、子代理定义与 MCP 配置写在 <code>~/.kova/</code> 和工作区的
+            <code>.kova/</code> 里。API Key 交给系统钥匙串，
+            macOS 上的服务名是 <code>com.kova.assistant</code>。
+            你随时可以打开目录，看它到底存了什么。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">~/.kova/</span>
+            <span className="kov-chip">Keychain</span>
+            <span className="kov-chip">rusqlite</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">02 / 模型可选</div>
+          <h3 className="kov-card__title">换模型只是一个下拉项</h3>
+          <p className="kov-card__body">
+            模型选择器里配置多家供应商。工具执行、会话持久化、上下文压缩与权限判定
+            全部由本地 sidecar 完成，与具体模型无关——
+            <b style={{ color: "var(--kov-ink)" }}>换一个模型不会绕过任何一道审批</b>。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">多供应商</span>
+            <span className="kov-chip">回合级切换</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">03 / 可约束</div>
+          <h3 className="kov-card__title">停下来问你，是本地逻辑不是模型自觉</h3>
+          <p className="kov-card__body">
+            挂起、批准、拒绝、回滚都发生在确定性代码里。模型说"我做完了"不算数——
+            出口工具要带目标 id 比对，过期的完成信号会被拒绝。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">stale-turn guard</span>
+            <span className="kov-chip">prefix rules</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ TURN LOOP ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">The loop</span>
+    <h2 className="kov-h2">一次会话里真正在发生什么</h2>
+    <p className="kov-lede">
+      你看到的是一个流式会话。背后跑的是一个确定的循环——
+      而其中只有第二步属于模型，其余全是本地代码。
+    </p>
+
+    <div className="kov-loop">
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">组装上下文</h3>
+        <p className="kov-loop__body">
+          取会话历史，注入长期记忆与已装载技能，附上 @ 提及的文件内容与附件。
+          上下文占用过多时先做压缩，保留关键决策与已产出文件。
+        </p>
+      </div>
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">调用模型</h3>
+        <p className="kov-loop__body">
+          交给当前选中的模型，拿到增量文本或一组工具调用。换模型只影响这一步。
+        </p>
+      </div>
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">逐个判定工具调用</h3>
+        <p className="kov-loop__body">
+          每个调用先过<b style={{ color: "var(--kov-ink)" }}>会话模式</b>（这一档能不能改），
+          再过<b style={{ color: "var(--kov-ink)" }}>权限档位</b>（这一档要不要问）。
+          两者都放行才继续。
+        </p>
+      </div>
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">该问就停下来问</h3>
+        <p className="kov-loop__body">
+          需要审批时回合挂起、状态保留，你的选择回来之后从同一步继续。
+          被拒绝的调用作为 blocked 结果回给模型，让它换一条路，而不是卡死。
+        </p>
+      </div>
+      <div className="kov-loop__item">
+        <h3 className="kov-loop__title">执行、回灌、落检查点</h3>
+        <p className="kov-loop__body">
+          工具在 sidecar 内执行，结果回灌进上下文，循环回到第二步。
+          每次调用与文件改动都记成检查点，随时能回到某一步重来。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ PERMISSIONS SPEC ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Permission model</span>
+    <h2 className="kov-h2">它不会悄悄替你做决定</h2>
+    <p className="kov-lede">
+      界面上是两个独立的下拉，合起来才是最终行为。把它们混为一谈
+      是关于扣瓦最常见的误解。
+    </p>
+
+    <div className="kov-spec">
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">agent</span>
+          <span className="kov-spec__tag">会话模式</span>
+        </div>
+        <p className="kov-spec__val">
+          完整工具集。默认模式——读写文件、跑命令、调子代理。
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">plan</span>
+          <span className="kov-spec__tag">会话模式</span>
+        </div>
+        <p className="kov-spec__val">
+          结构性只读。只能读和规划，通过 <code>plan_exit</code> 拿到批准后回到 agent 实施。
+          规划与实施在权限上分开，读代码阶段拿不到写权限。
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">ask</span>
+          <span className="kov-spec__tag">会话模式</span>
+        </div>
+        <p className="kov-spec__val">纯只读子集，没有 <code>bash</code>。适合"就问问，别动手"。</p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">goal</span>
+          <span className="kov-spec__tag">会话模式</span>
+        </div>
+        <p className="kov-spec__val">
+          完整工具集加跨轮自治。你说的第一句话就是目标，模型一路做到完，
+          中途不用点"继续"。细节见 <a href="/features/goal-mode">目标模式</a>。
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">workspace-write</span>
+          <span className="kov-spec__tag">权限档位</span>
+        </div>
+        <p className="kov-spec__val">
+          工作区内与可写根清单内的目录免确认；bash 仍要点头，
+          但支持"允许并记住这类命令"生成前缀规则。
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">审批卡</span>
+          <span className="kov-spec__tag">只有三个按钮</span>
+        </div>
+        <p className="kov-spec__val">
+          拒绝、仅这一次、允许并记住。"允许并记住"受可写根清单两道守卫约束，
+          永远不会因此获得你没批准过的目录写权限。
+        </p>
+      </div>
+    </div>
+
+    <div className="kov-panel">
+      <div className="kov-panel__core">
+        <div className="kov-panel__head">
+          <i /><i /><i /><span>直说一件事</span>
+        </div>
+        <div className="kov-panel__body">
+          <code>workspace-write</code> 档<b style={{ color: "var(--kov-accent)" }}>管不住 bash</b>
+          ——命令可以通过 shell 写到工作区之外的任何位置。这是有意的取舍，
+          <code>docs/permission-modes.md</code> 里有专门章节说明，不是设计疏漏。
+          真正需要隔离时请用沙箱或容器。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ CAPABILITIES BENTO ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Capabilities</span>
+    <h2 className="kov-h2">核心能力</h2>
+
+    <div className="kov-bento kov-bento--lead">
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">对话工作区</div>
+          <h3 className="kov-card__title">多线程会话、附件与 @ 提及、提示词排队</h3>
+          <p className="kov-card__body">
+            多会话管理、附件与 @ 提及、斜杠命令、模型选择器、语音输入，
+            会话标题由 AI 自动总结。提示词排队让你在 agent 还在跑的时候
+            把后续要求写进去，条目会持久化到会话转录——刷新、重启、切线程都不丢。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">prompt queue v2</span>
+            <span className="kov-chip">checkpoints</span>
+            <span className="kov-chip">streamdown</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">Agent 运行时</div>
+          <h3 className="kov-card__title">独立 sidecar 进程</h3>
+          <p className="kov-card__body">
+            长任务不拖垮界面，界面崩溃不打断正在跑的活儿，多端复用同一份运行时。
+            内置编码、浏览器、HTTP、截图工具，带上下文压缩与长期记忆。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">NDJSON over stdio</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">子代理</div>
+          <h3 className="kov-card__title">Task / TaskWait / TaskList / TaskStop</h3>
+          <p className="kov-card__body">
+            独立上下文与工具集，三层发现（内置 / 用户 / 插件），
+            活动过程边干边落盘，重启后可回放。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">activity replay</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">MCP</div>
+          <h3 className="kov-card__title">多服务器连接池</h3>
+          <p className="kov-card__body">
+            配置双层合并、输出防护、OAuth，调用走同一套审批流程并留下审计记录。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ MORE SCREENS ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Interface</span>
+    <h2 className="kov-h2">从配置到统计，都在你自己的机器上</h2>
+    <div className="kov-shots">
+      <div className="kov-app kov-app--solo">
+        <div className="kov-app__bar"><i /><i /><i /><span className="kov-app__name">新对话</span></div>
+        <div className="kov-app__win">
+          <div className="kov-app__side">
+            <div className="kov-app__nav is-on">+ 新对话</div>
+            <div className="kov-app__nav">自动化</div>
+            <div className="kov-app__nav">插件 / 专家 / 技能</div>
+            <div className="kov-app__nav">我的文件</div>
+          </div>
+          <div className="kov-app__main kov-app__chat">
+            <p className="kov-app__sub">选个方向，或者直接说事。</p>
+            <div className="kov-app__chips">
+              <span className="kov-app__chip">灵感</span>
+              <span className="kov-app__chip">写作</span>
+              <span className="kov-app__chip">写代码</span>
+              <span className="kov-app__chip">分析</span>
+              <span className="kov-app__chip">插件</span>
+            </div>
+            <div className="kov-app__composer">输入任务指令 @选择智能体，/打开指令菜单</div>
+          </div>
+        </div>
+      </div>
+      <div className="kov-app kov-app--solo">
+        <div className="kov-app__bar"><i /><i /><i /><span className="kov-app__name">设置 · 使用统计</span></div>
+        <div className="kov-app__win">
+          <div className="kov-app__side">
+            <div className="kov-app__nav">模型</div>
+            <div className="kov-app__nav">凭据</div>
+            <div className="kov-app__nav">MCP 服务器</div>
+            <div className="kov-app__nav is-on">使用统计</div>
+            <div className="kov-app__nav">可观测性</div>
+            <div className="kov-app__nav">备份与归档</div>
+          </div>
+          <div className="kov-app__main">
+            <h5 style={{ margin: "0 0 0.7rem", fontSize: "0.9rem" }}>Token 活动</h5>
+            <div className="kov-app__bar-chart">
+              <span style={{ height: "38%" }} /><span style={{ height: "62%" }} />
+              <span style={{ height: "45%" }} /><span style={{ height: "88%" }} />
+              <span style={{ height: "54%" }} /><span style={{ height: "72%" }} />
+              <span style={{ height: "96%" }} />
+            </div>
+            <div className="kov-app__row" style={{ marginTop: "0.8rem" }}><span>累计 Token</span><b>128.4 万</b></div>
+            <div className="kov-app__row"><span>缓存命中率</span><b>86%</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ FEATURE PAGES ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Feature tour</span>
+    <h2 className="kov-h2">功能详解</h2>
+    <p className="kov-lede">
+      十个主题，每个都有完整的设计文档——从会话工作区到提示词缓存，点击进入。
+    </p>
+
+    <div className="kov-bento" style={{ marginTop: "2.6rem" }}>
+      <a className="kov-bezel" href="/features/conversation" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">01</div>
+          <h3 className="kov-card__title">对话工作区</h3>
+          <p className="kov-card__body">多线程会话、附件与 @ 提及、检查点回溯、斜杠命令与语音输入。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/prompt-queue" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">02</div>
+          <h3 className="kov-card__title">提示词排队 v2</h3>
+          <p className="kov-card__body">QueueEngine 快照持久化、三条幂等同步规则，排队条目连图片都不丢。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/modes" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">03</div>
+          <h3 className="kov-card__title">模式总览</h3>
+          <p className="kov-card__body">五个常被叫作「模式」的东西彻底分开：会话模式、权限档位、工作模式、自动化档。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/goal-mode" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">04</div>
+          <h3 className="kov-card__title">目标模式</h3>
+          <p className="kov-card__body">显式状态机、两条停机阀、过期护栏，以及为什么刻意不做 token 预算。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/subagents" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">05</div>
+          <h3 className="kov-card__title">子代理设计</h3>
+          <p className="kov-card__body">Task 四件套、三层发现、活动过程持久化回放与 token 结算。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/prompt-cache" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">06</div>
+          <h3 className="kov-card__title">提示词缓存</h3>
+          <p className="kov-card__body">prompt_cache_key 分片路由、同形摘要请求、两套命中率口径。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/plugins" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">07</div>
+          <h3 className="kov-card__title">插件与工作台</h3>
+          <p className="kov-card__body">office / canvas / ui-design 三个工作台与本地插件市场。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/automation" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">08</div>
+          <h3 className="kov-card__title">自动化</h3>
+          <p className="kov-card__body">定时任务、合并补跑、无人值守审批档与 Webhook 通知。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/remote-mobile" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">09</div>
+          <h3 className="kov-card__title">远程与移动端</h3>
+          <p className="kov-card__body">配对码换 token、三种网络接入、Expo 移动 App 与安全边界。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/agent-engine" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">10</div>
+          <h3 className="kov-card__title">Agent 引擎</h3>
+          <p className="kov-card__body">回合生命周期、内置工具表、上下文压缩与长期记忆。</p>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  {/* ============ WORKSPACES ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Workspaces</span>
+    <h2 className="kov-h2">会给你打开来用的工作台</h2>
+    <p className="kov-lede">
+      插件不只是一段提示词，而是能真正操作的界面。关键在于产物是结构化数据——
+      agent 改的是同一份文档，不是给你看一张图。
+    </p>
+
+    <div className="kov-bento kov-bento--trio">
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">office</div>
+          <h3 className="kov-card__title">幻灯片与表格</h3>
+          <p className="kov-card__body">
+            幻灯片逐页编辑、放映与导出 <code>.pptx</code>；
+            表格走 Univer 引擎，支持公式、样式、合并与冻结。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">Univer</span>
+            <span className="kov-chip">pptxgenjs</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">canvas</div>
+          <h3 className="kov-card__title">无限画布</h3>
+          <p className="kov-card__body">
+            文本、形状、图片、Mermaid、表格、图表、网页嵌入自由摆放，
+            整幅导出 SVG。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">*.canvas.json</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="kov-bezel">
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">ui-design</div>
+          <h3 className="kov-card__title">Figma 式设计工作台</h3>
+          <p className="kov-card__body">
+            页面 / 画板 / 图层树加完整属性检视。它自带 MCP 服务器，
+            agent 因此能直接操作画布节点——增删改、对齐分布、堆叠排版、成组。
+          </p>
+          <div className="kov-card__meta">
+            <span className="kov-chip">MCP 直控</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ ARCHITECTURE ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Architecture</span>
+    <h2 className="kov-h2">四层结构</h2>
+    <p className="kov-lede">
+      把 agent 拆成独立进程是有意的：长任务不拖垮界面，界面崩溃不打断活儿，
+      多端复用同一份运行时。详见 <a href="/developers/architecture">架构总览</a>。
+    </p>
+
+    <div className="kov-panel">
+      <div className="kov-panel__core">
+        <div className="kov-panel__head">
+          <i /><i /><i /><span>repo map</span>
+        </div>
+        <div className="kov-panel__body">
+          <pre><code>{`apps/desktop      Next.js + assistant-ui 会话界面，Tauri v2 宿主
+apps/sidecar     pi-agent 运行时（Bun/TS），NDJSON over stdio
+apps/mobile      Expo SDK 57 + RN 0.86，经桌面网关 /ws 接入
+packages         pi-protocol 跨端契约 · shared
+plugins          office · canvas · ui-design · marketplace.json`}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ QUICKSTART ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Get started</span>
+    <h2 className="kov-h2">五分钟跑起来</h2>
+    <p className="kov-lede">
+      需要 <a href="https://bun.sh">Bun</a>、Rust 工具链与 Node.js。
+      完整说明见 <a href="/quickstart">快速开始</a>。
+    </p>
+
+    <div className="kov-panel">
+      <div className="kov-panel__core">
+        <div className="kov-panel__head">
+          <i /><i /><i /><span>Terminal</span>
+        </div>
+        <div className="kov-panel__body">
+          <pre><code>{`git clone https://github.com/xqb0407/kova.git
+cd kova
+bun install
+bun run tauri:dev`}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ WHO ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <span className="kov-eyebrow">Who it's for</span>
+    <h2 className="kov-h2">适合谁</h2>
+
+    <div className="kov-spec">
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">想在本地干活的人</span>
+          <span className="kov-spec__tag">数据</span>
+        </div>
+        <p className="kov-spec__val">
+          代码、数据、文件都在自己的机器上，不想为了用一个助手把工作区上传到某台服务器。
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">要接一堆外部工具的人</span>
+          <span className="kov-spec__tag">集成</span>
+        </div>
+        <p className="kov-spec__val">
+          已经在用多个 MCP 服务器，需要一个把它们管起来、并且每次调用都留痕的地方。
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">要做办公产物的人</span>
+          <span className="kov-spec__tag">产出</span>
+        </div>
+        <p className="kov-spec__val">
+          需要的是能导出 <code>.pptx</code> 和 <code>.xlsx</code> 的真文档，
+          而不是聊天框里的一张预览图。
+        </p>
+      </div>
+      <div className="kov-spec__row">
+        <div className="kov-spec__key">
+          <span className="kov-spec__name">想二次开发的团队</span>
+          <span className="kov-spec__tag">工程</span>
+        </div>
+        <p className="kov-spec__val">
+          这是可直接改造的模板：monorepo 结构清晰，跨端契约集中在
+          <code>packages/pi-protocol</code>，换品牌一条命令。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {/* ============ CLOSING ============ */}
+  <section className="kov__wrap kov__section kov-rv">
+    <div className="kov-close">
+      <h2 className="kov-close__title">装一个，或者读两行代码</h2>
+      <p className="kov-close__sub">
+        取安装包配置一个模型就能开始对话；想改的话，monorepo 里每个目录都对应一个明确的职责。
+      </p>
+      <div className="kov-hero__cta">
+        <a className="kov-btn kov-btn--primary" href="https://github.com/xqb0407/kova/releases">
+          下载安装包
+          <span className="kov-btn__icon" aria-hidden="true">↗</span>
+        </a>
+        <a className="kov-btn" href="/developers/architecture">
+          架构总览
+          <span className="kov-btn__icon" aria-hidden="true">→</span>
+        </a>
+      </div>
+    </div>
+
+    <p className="kov-foot">
+      Kova · 扣瓦 — 以 Apache License 2.0 开源发布。
+      基于本仓库二次开发并分发时，请保留 LICENSE 与上游依赖各自的许可声明。
+    </p>
+  </section>
+</div>

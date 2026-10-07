@@ -1,0 +1,153 @@
+---
+title: "Quickstart"
+description: "Prerequisites, installing the desktop app, running from source, and how dev and release data stay separate."
+---
+
+## Prerequisites
+
+Running from source needs three things:
+
+| Dependency | Version | Purpose |
+| --- | --- | --- |
+| [Bun](https://bun.sh) | ≥ 1.x | Dependency install and workspace scripts |
+| Rust toolchain | As required by Tauri v2 | Building the desktop host (see the [official prerequisites](https://tauri.app/start/prerequisites/)) |
+| Node.js | LTS | Invokes `next dev` via `node_modules` |
+
+## Install and run
+
+<Steps>
+  <Step title="Clone and install">
+    ```bash
+    git clone https://github.com/xqb0407/kova.git
+    cd kova
+    bun install
+    ```
+
+    This is a workspace repo, so a single install covers `apps/*`,
+    `apps/sidecar/*`, `packages/*`, and `plugins/*`.
+  </Step>
+  <Step title="Start the desktop app">
+    ```bash
+    bun run tauri:dev
+    ```
+
+    One command brings up three things: the Next dev server with hot reload,
+    incremental Rust compilation, and the agent sidecar process.
+    The first Rust build takes a while; everything after it is incremental.
+  </Step>
+  <Step title="Just the frontend, in a browser">
+    ```bash
+    bun run dev
+    ```
+
+    Next only, no Tauri host. The sidecar falls back to local SQLite storage,
+    which is handy for pure UI work.
+  </Step>
+  <Step title="Configure a model">
+    Open Settings → Models inside the app and add a provider API key. Credentials go
+    to the system keychain rather than to plaintext on disk. On macOS the service name
+    is `com.kova.assistant`.
+  </Step>
+</Steps>
+
+## Common commands
+
+<CodeGroup>
+```bash Terminal
+# Full Tauri desktop dev loop
+bun run tauri:dev
+
+# Next frontend only
+bun run dev
+
+# Sidecar unit tests
+bun run test
+
+# Build the agent sidecar alone (fills in plugin artifacts first)
+bun run build:sidecar
+
+# Build plugin artifacts (panel HTML + zip bundles)
+bun run build:plugins
+cd apps/sidecar/pi-agent && bun run plugins:pack
+
+# Mobile (start the desktop gateway and allow LAN access first)
+bun run dev:mobile
+bun run typecheck:mobile
+bun run test:mobile
+
+# Static web export → apps/mobile/dist
+bun run build:mobile:web
+```
+</CodeGroup>
+
+## Smoke test
+
+You can exercise the sidecar without booting the Rust host:
+
+```bash
+cd apps/sidecar/pi-agent && bun run smoke
+```
+
+Without the host it falls back to local SQLite storage, which makes this a good way to
+verify protocol handshake, tool registration, and session reads/writes in isolation.
+
+## Dev and release data stay separate
+
+This one bites people, so it gets its own section.
+
+`bun run tauri:dev` layers `apps/desktop/src-tauri/tauri.dev.conf.json` on top, with the
+identifier `com.kova.assistant.dev` and the display name "扣瓦 Dev". The app data
+directory therefore becomes:
+
+```
+~/Library/Application Support/com.kova.assistant.dev
+```
+
+Three consequences follow:
+
+- Installing or uninstalling the release build **never touches dev data**, and vice versa;
+- The dev build keeps its master key in `master.dev.key` inside the data directory
+  (this avoids spurious key rotation when the keychain ACL refuses to read after a
+  rebuild), while release builds use the system keychain. The two ciphertexts are
+  mutually unreadable;
+- Because the ciphertexts differ, **you re-enter credentials once** when crossing
+  environments.
+
+<Warning>
+  The global `~/.kova/` layer is **intentionally shared** — it is a machine-level
+  configuration layer outside the installer's control, so isolation only happens at the
+  `Application Support` layer.
+
+  Also note that a bare `cargo run` that bypasses the CLI does not inject the dev config
+  and will fall back to the release identifier.
+</Warning>
+
+## Common issues
+
+<AccordionGroup>
+  <Accordion title="A panel won't open, or the plugin artifact is missing">
+    Panel HTML files and built-in plugin zips are **build artifacts and are not
+    committed**. Run `bun run build:plugins` to generate the HTML, then
+    `cd apps/sidecar/pi-agent && bun run plugins:pack` to repack the zips.
+    `build:sidecar`, `test`, and `smoke` all fill in missing artifacts automatically.
+  </Accordion>
+  <Accordion title="Metro reports duplicate React instances on mobile">
+    This is expected. RN 0.86 can only pair with react 19.2.3, while desktop runs
+    Next with react 19.3 — each keeps its own copy. The repo relies on
+    `install.hoistingLimits = "workspaces"` to install mobile dependencies under
+    `apps/mobile/node_modules`, preventing hoisting from raising either version.
+  </Accordion>
+  <Accordion title="I want my own branding">
+    This is a template repo, and rebranding is one command:
+    ```bash
+    ./scripts/rename.sh <new-slug> [--app-name "Name"] [--dry-run]
+    ```
+    Windows uses `scripts\rename.bat`. It covers all three brand forms
+    (slug / Pascal / UPPER), the internal `pi-desktop` id, the Tauri display name and
+    bundle id, and `.kova-plugin` directory names — and backs everything up first.
+  </Accordion>
+</AccordionGroup>
+
+<Card title="Next" icon="arrow-right" href="/en/features/conversation">
+  See what these capabilities look like in use.
+</Card>

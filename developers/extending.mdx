@@ -1,0 +1,125 @@
+---
+title: "扩展开发"
+description: "写一个插件、接一个 MCP 服务器、加一个技能，以及 NDJSON 协议与跨端契约的约定。"
+---
+
+## 写一个插件
+
+<Steps>
+  <Step title="建目录与清单">
+    ```bash
+    mkdir -p plugins/my-plugin/.kova-plugin
+    ```
+
+    清单是 `.kova-plugin/plugin.json`：
+    ```json
+    {
+      "name": "my-plugin",
+      "version": "0.1.0",
+      "description": "一句话说明这个插件做什么",
+      "author": { "name": "你" },
+      "category": "效率",
+      "icon": "icon.svg",
+      "keywords": ["my", "plugin"],
+      "skills": "skills",
+      "panels": "panels.json",
+      "mcpServers": ".mcp.json"
+    }
+    ```
+  </Step>
+  <Step title="决定要做哪几层">
+    `skills/` 提供技能（agent 知道怎么做），
+    `panels.json` 注册面板（人能打开来用），
+    `.mcp.json` 贡献 MCP 服务器（agent 能调用）。
+    三层可以只做一层，也可以全做。
+  </Step>
+  <Step title="注册进市场">
+    在 `plugins/marketplace.json` 里加一条，应用内的插件市场就能看到它。
+  </Step>
+  <Step title="构建产物并验证">
+    ```bash
+    bun run build:plugins
+    cd apps/sidecar/pi-agent && bun run plugins:pack
+    ```
+
+    面板 HTML 与内置 zip 是构建产物，不入库。
+    `build:sidecar` / `test` / `smoke` 会自动补齐缺失产物。
+  </Step>
+</Steps>
+
+设计文档见仓库内 `docs/plugin-system-design.md`。
+
+## 接一个 MCP 服务器
+
+MCP 的接入设计见 `docs/mcp-design.md`。要点：
+
+- **多服务器连接池**：多个 MCP 服务器并发连接，互不阻塞；
+- **配置双层合并**：全局配置与工作区配置合并，工作区覆盖全局；
+- **输出防护**：MCP 返回的内容视为不可信输入，注入内容会被隔离标记；
+- **OAuth**：支持需要授权的服务器；
+- **审批与审计**：MCP 工具的调用与其他工具走同一套审批流程，并留下审计记录。
+
+插件也可以通过清单里的 `mcpServers` 字段自带 MCP 服务器定义——
+`ui-design` 就是这么做的，agent 因此能直接操作设计画布。
+
+## 加一个技能
+
+技能放在插件的 `skills/` 目录，或由用户级配置提供。
+技能是装进 agent 上下文的知识包，在设置 → 技能里装载与管理。
+
+内置的 iOS / Material / 通用移动端设计规范就是以技能形式分发的，
+可通过 `use_skill` 按需加载，而不是一次性全塞进上下文。
+
+## 加一个内置工具
+
+工具实现在 `apps/sidecar/pi-agent/src/tools/`，在 `tools.ts` 里注册。
+新增工具时必须同时决定它的权限行为：
+
+<Warning>
+  工具的"能不能用"由**会话模式**决定，"要不要问"由**权限档位**决定。
+  两者在 UI 上是分开的两个下拉。新增工具时要同时挂到正确的维度上，
+  否则会出现"在 plan 模式里居然能写文件"这类不一致。
+</Warning>
+
+修改权限枚举后记得同步更新
+`docs/permission-modes.md` 里的枚举扩容检查表——
+那不是文档洁癖，是防止枚举与 UI 选项不同步。
+
+## NDJSON 协议与跨端契约
+
+<Columns cols={2}>
+  <Column title="pi-protocol">
+    `packages/pi-protocol` 定义前后端共享的契约。
+    桌面前端、sidecar、移动端都从这里取类型。
+    改协议时改这里，不要在任何一端另写一份。
+  </Column>
+  <Column title="NDJSON over stdio">
+    桌面宿主与 sidecar 之间的进程协议：一行一个 JSON 对象。
+    业务表的读写走 stdout 上的 host RPC，
+    所以日志与协议在通道上有明确区分。
+  </Column>
+</Columns>
+
+同一个 sidecar 实例同时服务桌面直连与远程 `/ws` 连接，
+所以任何改动都要考虑"多端同时在线"下的行为。
+
+## 一键换品牌
+
+这是模板仓库，换成自己的品牌：
+
+```bash
+./scripts/rename.sh <new-slug> [--app-name "显示名"] [--dry-run]   # macOS / Linux
+scripts\rename.bat <new-slug> [--app-name "Name"] [--dry-run]      # Windows
+```
+
+覆盖品牌三形态（slug / Pascal / UPPER）、`pi-desktop` 内部 id、
+Tauri 显示名与 bundle id、`.kova-plugin` 目录名等，改动前自动备份。
+
+<Note>
+  改名后记得同步更新 `apps/desktop/src-tauri/tauri.dev.conf.json` 里的
+  identifier——dev 与正式版靠它区分，靠脚本改容易漏。
+</Note>
+
+<Card title="下一步" icon="arrow-right" href="/developers/release">
+  怎么打包和发版。
+</Card>

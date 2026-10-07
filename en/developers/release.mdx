@@ -1,0 +1,123 @@
+---
+title: "Build & release"
+description: "The one-command packaging script, Tauri build config, artifact locations, and the difference between packaging and releasing."
+---
+
+## One-command packaging
+
+```bash
+./scripts/build-release.sh    # macOS / Linux
+scripts\build-release.bat     # Windows
+```
+
+The script runs dependency install → build the sidecar → build the frontend → emit
+installers.
+
+<CodeGroup>
+```bash Flags
+--skip-install   skip dependency install
+--debug          debug build
+--allow-dev      allow packaging with dev dependencies present
+--check          environment preflight only, no actual build
+```
+</CodeGroup>
+
+## Building in stages
+
+<CodeGroup>
+```bash Terminal
+# Frontend artifacts only
+bun run build
+
+# Desktop installers only
+# beforeBuildCommand runs build:sidecar + build automatically
+bun run tauri:build
+
+# Agent sidecar only (fills in plugin artifacts first)
+bun run build:sidecar
+
+# Release flow
+bun run release
+```
+</CodeGroup>
+
+## Where artifacts land
+
+```
+apps/desktop/src-tauri/target/release/bundle/
+```
+
+| Platform | Artifacts |
+| --- | --- |
+| macOS | `.dmg` / `.app` |
+| Windows | NSIS setup `.exe` |
+
+<Note>
+  Windows produces **no MSI**. The WiX toolchain is unreliable with CJK product names,
+  while NSIS is not — so NSIS is the only path kept.
+</Note>
+
+## Packaging is not releasing
+
+These get conflated constantly, but the responsibilities are different:
+
+| | What it does | Which command |
+| --- | --- | --- |
+| **Package** | Compiles installers | `build-release.sh` / `tauri:build` |
+| **Release** | Syncs the version, tags, pushes to the remote | `bun run release` (`scripts/release.mjs`) |
+| **Mirror to GitHub** | Pushes the mirror, cleans up tags and history | `./scripts/sync-github.sh` |
+
+`release.mjs` **only** syncs the version, tags, and pushes to the remote — it does not
+attach installers to a GitHub Release. To mirror to GitHub (including tag and history
+cleanup), run `./scripts/sync-github.sh`. See `docs/release.md` in the repository.
+
+## Mobile is a separate pipeline
+
+Mobile runs on its own `release-mobile.yml` workflow:
+
+- **Manual trigger only** — it does not follow main releases;
+- Produces **unsigned** IPA / APK, kept as workflow artifacts;
+- **Not attached to Releases.**
+
+It is split out because mobile does not yet have a real distribution and signing flow;
+automating it would only produce artifacts nobody can obtain.
+
+## Version numbers
+
+The version is a single source of truth, synced across `package.json`, the Tauri
+config, and the individual workspace packages. `bun run release` syncs it before
+tagging. Do not hand-edit one `package.json`.
+
+## Pre-release checklist
+
+<Steps>
+  <Step title="Preflight the environment">
+    `./scripts/build-release.sh --check`
+  </Step>
+  <Step title="Run the tests">
+    ```bash
+    bun run test              # sidecar unit tests
+    bun run test:mobile       # mobile unit tests
+    bun run typecheck:mobile  # mobile typecheck
+    ```
+  </Step>
+  <Step title="Confirm plugin artifacts are present">
+    ```bash
+    bun run build:plugins
+    ```
+    Panel HTML and zips are not committed, and a missing one only surfaces after
+    installation.
+  </Step>
+  <Step title="Package and verify the installer">
+    Install from the bundle directory in a clean environment and run the smoke test —
+    especially keychain reads/writes and sidecar startup.
+  </Step>
+  <Step title="Release">
+    `bun run release` to tag and push; `./scripts/sync-github.sh` if you want the
+    GitHub mirror.
+  </Step>
+</Steps>
+
+<Card title="Back to reference" icon="arrow-right" href="/en/reference/roadmap">
+  See what comes next.
+</Card>

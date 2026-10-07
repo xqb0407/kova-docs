@@ -1,0 +1,112 @@
+---
+title: "Subagent design"
+description: "The Task quartet, three-layer discovery, isolated contexts with their own token ledger, and persistent activity replay."
+---
+
+Subagents let the agent split large work and process it in parallel rather than grinding
+through it serially in one context. Each subagent is an **independent Agent instance**:
+own context, own toolset, own ledger.
+
+## The four management tools
+
+<Steps>
+  <Step title="Task">Dispatch a subagent with its own context and toolset.</Step>
+  <Step title="TaskWait">Wait for a subagent to finish and collect its result.</Step>
+  <Step title="TaskList">List live subagents and their status.</Step>
+  <Step title="TaskStop">Terminate a running subagent.</Step>
+</Steps>
+
+## Three-layer discovery
+
+Definitions live in `~/.kova/` and are managed under Settings → Subagents. Discovery has
+three layers:
+
+1. **Built-in definitions** — shipped with the app;
+2. **User-defined** — the ones you write in settings;
+3. **Plugin-provided** — contributed through a plugin's manifest.
+
+## Why the activity trail must be persisted
+
+The most practical lesson in the subagent system.
+
+**The problem before**: what a subagent did while working — its thinking, tool calls, and
+written text — lived only in memory, capped at 400 entries, and when full the buffer
+preferentially dropped thinking and text deltas. Restart the app and the "Subagents"
+panel showed a single line: "record expired" — only the final report survived, in the
+main conversation.
+
+**The design** is three things:
+
+<Columns cols={3}>
+  <Card title="Where">
+    One file per subagent:
+    `sessions/subagents/<its id>.jsonl`, one record per line, append-only.
+  </Card>
+  <Card title="How">
+    Written as it runs, but **batched** (250ms) — fast, disk-friendly, and it never
+    blocks the agent's main loop.
+  </Card>
+  <Card title="After a crash">
+    Read back from the file on restart; the panel renders normally, with zero changes to
+    the frontend store.
+  </Card>
+</Columns>
+
+### Crash loss rate
+
+Define it before promising anything — **loss rate = records lost at crash / records that
+delegation had produced**.
+
+- A crash loses at most the **current unflushed batch** (≤250ms of increments);
+- Terminal states (the report) are **force-flushed synchronously**, so **the result is
+  never lost**;
+- Corollary: the longer the delegation runs, the lower the boundary loss. **Short tasks
+  are exempt** — they produce few records anyway, and their trail is worth little;
+  accepted deliberately.
+
+### Recovery and "interrupted"
+
+Reads are lazy: the disk is consulted only on a memory miss, with no startup warm-up.
+A delegation that was running when it was persisted comes back marked `interrupted` —
+the process is gone so it cannot still be running, but its complete trail (thinking,
+tool calls, text, report) survives.
+
+### Retention guards
+
+- A file over 5MB is trimmed to keep the last 1MB, so long jobs cannot fill the disk;
+- File count is governed by **scanning the directory** (not memory — after a restart
+  memory is empty, only a scan knows what exists), deleting the oldest when over the cap;
+- Cleanup only runs **while no delegation is active**, and running files are never
+  evicted.
+
+## Token settlement: subagents keep their own books
+
+A subagent is an independent Agent; its usage never lands in the parent transcript. Read
+only the parent transcript and "the subagents did most of the work" will badly
+under-count.
+
+So subagents keep their own ledger (`SubagentRun.tokens`) and settle into the parent run,
+with a status guard that blocks double-settlement of the same amount.
+
+<Note>
+  This is one of the reasons [goal mode](/en/features/goal-mode) moved its token ledger
+  from "read the transcript" to "accrue deltas": a ledger that cannot see subagents makes
+  the objective's burn counter wrong.
+</Note>
+
+## Explicitly out of scope
+
+<Warning>
+  The design states its boundaries; these are deliberate trade-offs:
+
+  - **No resumption**: after a restart the execution chain is not restored; an unfinished
+    delegation is "replayable history", not something that auto-continues;
+  - **Nothing written into the parent transcript**: the parent transcript is read whole,
+    and writing into it would pollute it;
+  - **No new storage engine**: the existing JSONL pipeline and its write discipline are
+    reused.
+</Warning>
+
+<Card title="Next" icon="arrow-right" href="/en/features/prompt-queue">
+  Another underrated design: prompt queue v2.
+</Card>

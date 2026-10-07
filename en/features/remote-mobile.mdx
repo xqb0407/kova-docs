@@ -1,0 +1,140 @@
+---
+title: "Remote access & mobile"
+description: "The desktop gateway, trading a pairing code for a token, three network access paths, and the Expo-built mobile app."
+---
+
+The mobile side of Kova is not a second client implementation. The **desktop opens a
+gateway and the phone or browser acts as a viewport**. Conversations, tool execution,
+and files all still live on the desktop — so if the phone drops off the network the
+desktop keeps working, and the session picks back up on reconnect.
+
+## How it works
+
+<Steps>
+  <Step title="The desktop opens a gateway">
+    Turn it on under Settings → Remote. The sidecar starts an HTTP + WebSocket server
+    via `axum` and bridges sessions and tool calls across it.
+  </Step>
+  <Step title="Trade the pairing code for a token">
+    On first connect you enter a pairing code and the server issues a token, which is
+    stored in the system keychain (iOS Keychain / Android Keystore). After that you are
+    not asked again.
+  </Step>
+  <Step title="Connect over WebSocket">
+    The mobile app and the web client hit the same `/ws` endpoint and the same protocol
+    primitives. The desktop's session stream, tool calls, and checkpoints render
+    faithfully on the other side.
+  </Step>
+</Steps>
+
+## Three ways to reach it
+
+<Columns cols={3}>
+  <Card title="LAN direct">
+    Available by default. On the same Wi-Fi, connect straight to the desktop's LAN
+    address. Fine for home and office.
+  </Card>
+  <Card title="Cloudflare Tunnel">
+    Public access with no public IP required. The repo supports supplementary
+    credentials such as a Cloudflare gateway ID to complete the auth flow.
+  </Card>
+  <Card title="Tailscale">
+    Also avoids exposing anything publicly, over private network addresses.
+  </Card>
+</Columns>
+
+Any other WebSocket client can connect — the protocol is plain NDJSON over WS.
+
+## Security notes
+
+<Warning>
+  Remote access assumes a trusted network. Before you turn it on, confirm:
+
+  - Pass the pairing code in person on the LAN; do not paste it into a public channel;
+  - Tokens currently **do not expire**. Revocation is all-or-nothing via "revoke all
+    devices" on the desktop;
+  - End-to-end encryption is not implemented yet, so traffic over a
+    tunnel/relay is plaintext WebSocket. Prefer a private-network option such as
+    Tailscale for public access.
+</Warning>
+
+## The mobile app
+
+<CardGroup cols={2}>
+  <Card title="Stack">
+    Expo SDK 57 + React Native 0.86 + `@assistant-ui/react-native`. Deliberately
+    **not** Tauri mobile — it reuses the desktop gateway's `/ws` protocol and shares its
+    origin with the browser client.
+  </Card>
+  <Card title="Dependency isolation">
+    Mobile dependencies install under `apps/mobile/node_modules`
+    (`install.hoistingLimits = "workspaces"`). RN 0.86 pairs only with react 19.2.3,
+    while desktop runs react 19.3 — each keeps a copy so hoisting cannot raise either
+    version and give Metro duplicate instances.
+  </Card>
+</CardGroup>
+
+```bash
+# Start the desktop gateway and allow LAN access first, then:
+bun run dev:mobile        # Expo dev
+bun run typecheck:mobile  # typecheck
+bun run test:mobile       # unit tests
+bun run build:mobile:web  # static web export → apps/mobile/dist
+```
+
+The app also ships a **demo mode** that browses the UI without a live gateway.
+
+## What the web client cannot do
+
+The browser client is the most capable of the three (it runs in the desktop environment),
+but there are still boundaries:
+
+- It cannot install or remove plugins — the marketplace is local desktop behaviour;
+- It cannot change system settings or manage credentials, which go through the Rust
+  host's system keychain;
+- System-level capabilities (window controls, terminal, screenshots) need the desktop
+  host present.
+
+## The agent always runs on the desktop
+
+Worth stating on its own, because it decides what remote access actually feels like.
+
+<Columns cols={2}>
+  <Column title="The execution site does not move">
+    Model calls, tool execution, and file access all happen in the sidecar on the
+    desktop. The phone is a viewport, not a second, lesser implementation. If the
+    desktop is off, the phone is just a shell that cannot connect.
+  </Column>
+  <Column title="So the agent is never interrupted">
+    The phone sleeping, backgrounding, or dropping off Wi-Fi has no effect on the task
+    running on the desktop. Reconnecting shows the continuation of the same turn.
+  </Column>
+</Columns>
+
+This is also why remote approval is on the roadmap rather than shipped today: an
+approval request is part of the execution path, so pushing one to your phone and waiting
+for you to release it requires solving backfill and session reconciliation first —
+otherwise approving something whose context you cannot see would be unsafe.
+
+<Note>
+  Today the approval card appears on whichever client you are using. Approving a task
+  you started on the desktop, from the desktop, is safe; approving from a phone means
+  knowing what you are approving. That safety rests on the paired device itself being
+  trusted, not on re-authenticating each time.
+</Note>
+
+## What is not built yet
+
+The real gap is "away from your computer". Not there today:
+
+- Push notifications (task complete, awaiting approval, a scheduled task finished);
+- Biometric unlock and token rotation;
+- Offline drafts, plus queueing and stream resumption across cell/Wi-Fi switches;
+- Narrow-screen interaction polish (gestures, attachment picking, session list reflow).
+
+All of it is on the [roadmap](/en/reference/roadmap). The current shape suits "the phone
+as a remote control while the desktop does the real work" — not the reverse.
+
+<Card title="Next" icon="arrow-right" href="/en/developers/architecture">
+  Understand which layer each of these features runs in.
+</Card>

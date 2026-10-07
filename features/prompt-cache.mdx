@@ -1,0 +1,116 @@
+---
+title: "提示词缓存"
+description: "prompt_cache_key 分片路由、会话亲和头、与聊天同形的压缩摘要请求，以及缓存命中率的两种口径。"
+---
+
+长会话的 token 账，大头不在生成而在**重复输入**：每一轮都把整段历史重新发给模型。
+提示词缓存（provider 侧的前缀缓存）让"和上一轮相同的前缀"按缓存价计费——
+前提是前缀真的逐字节一致，而且请求被路由到同一个缓存分片。
+扣瓦在 sidecar 里为这两件事都做了设计。
+
+## 路由：让同一会话落在同一缓存分片
+
+<Columns cols={2}>
+  <Column title="prompt_cache_key">
+    OpenAI 系接口按 <code>prompt_cache_key</code> 分片。sidecar 用会话 id 派生这个键
+    （经长度钳制），通过 payload hook 在出站请求上注入——
+    会话不变，键就不变，缓存分片就不换。
+  </Column>
+  <Column title="会话亲和头">
+    走网关 / 中转时，还需要让**基础设施**把同一会话路由到同一上游。
+    每个请求带 <code>x-session-affinity</code> 与 <code>X-Session-Id</code> 两个头。
+  </Column>
+</Columns>
+
+缺了这两样，请求会被随机分配到不同分片，前缀一模一样也照样全部重算——
+而且症状是静默的，账单先知道。
+
+## 长缓存开关
+
+```bash
+PI_CACHE_RETENTION=long   # Anthropic 1h / OpenAI 24h
+```
+
+默认用标准 TTL；打开后走各家的长缓存档，compat 层守门，
+模型不支持时自动降级回标准档，不会报错。
+
+## 压缩摘要请求必须和聊天请求"同形"
+
+这是整个设计里最隐蔽、也最值钱的一条。
+
+上下文压缩（compaction）本身要发一次模型请求来生成摘要。
+如果这次请求的 system、tools、参数与聊天路径不一致，
+服务端前缀缓存就命中不了任何东西——压缩会变成一笔全价重算。
+线上实测过：摘要请求只命中 128 token（一个缓存块）就分叉。
+
+所以摘要请求被刻意组装成**与聊天完全同形**：
+
+<Steps>
+  <Step title="同一 system（messages[0]）、同一 tools、同一亲和头与 prompt_cache_key">
+    唯一的差别是尾部多一条摘要指令——前缀缓存能命中整段对话。
+  </Step>
+  <Step title="思考档位同参数">
+    某些端点把参数算进缓存键（Anthropic 按 max_tokens 推导的 thinking 预算做键），
+    参数不一致同样会让"本该命中"的前缀失配。
+  </Step>
+  <Step title="同一长缓存开关">
+    与聊天路径共用 <code>PI_CACHE_RETENTION</code>。
+  </Step>
+</Steps>
+
+### 出站载荷指纹：分叉了怎么定位
+
+两条路径（聊天的 convertToLlm 链路、摘要的自有组装）分头组装请求体，
+序列化不同源就会出现"看起来一样、字节不一样"。
+为此对最可能分叉的三段各记一个短哈希 + 尺寸：
+**tools（条数 + 指纹）、首条 system 消息（长度 + 指纹）、消息条数**，
+连同 reasoning / max_tokens 等参数一起打进 event 级日志。
+两行日志一比对就知道差在哪一段——不用再猜。
+
+## 命中率怎么算：两套口径
+
+<Columns cols={2}>
+  <Column title="旧口径（misses）">
+    单轮 input ≥ 2,000 且 ≥ prompt 的 5% 就算一次 miss。
+    问题在于分不清「本轮新增内容」（工具结果本来就是新的）
+    和「前缀被重算」，实测误报能占九成。
+    仅用于兼容旧面板的分母。
+  </Column>
+  <Column title="现行口径（权威）">
+    单轮重算量 = **min(上一轮 prompt, 本轮 prompt) − cacheRead**，地板 1024。
+    这个数才是「这一轮多付了多少 token」，
+    并带 lastMiss 归因：空闲超 TTL，还是切换了模型。
+  </Column>
+</Columns>
+
+命中率本身是 `cacheRead / (input + cacheRead + cacheWrite)`，
+面板上看的是**近 10 轮窗口**——累计值会被冷启动和重建轮稀释，短窗才看得到稳态。
+
+<Note>
+  两条刻意的豁免：冷启动首轮没有「本应命中」的前缀，不计；
+  provider 从未上报过缓存活动的会话整段不计重算——
+  否则会把「这家 provider 根本不报缓存」的会话全记成 miss。
+</Note>
+
+## 和压缩的关系
+
+压缩（compaction）和缓存是一对互相拉扯的机制：
+压缩把历史换成摘要，前缀必然改变，压缩后的首轮**预期整段重算**，
+统计里单列为 `rebuilds`，不与真实 miss 混在一起。
+
+压缩本身的设计约定（见 `apps/sidecar/pi-agent/src/agent/context.ts` 头注）：
+
+- 只发生在**回合边界**，摘要覆盖全部历史、不保留原始尾部消息；
+- checkpoint 行持久化到 JSONL，全量消息行保留，UI 历史不受影响；
+- 摘要生成失败走 fresh_window 兜底——不花模型请求，装填固定 rollover 标记，
+  保证会话能继续。
+
+<Warning>
+  一个已知的近似：转录无法区分「进程重启后恢复会话的首轮」与「压缩后首轮」，
+  若恰在检查点之后，恢复轮会被记为一次重建——最多差一轮，
+  换取零新增持久化。这是记录在代码注释里的有意取舍，不是 bug。
+</Warning>
+
+<Card title="下一步" icon="arrow-right" href="/features/goal-mode">
+  缓存账算清了，目标模式还有自己的一本账。
+</Card>

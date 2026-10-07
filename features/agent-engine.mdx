@@ -1,0 +1,155 @@
+---
+title: "Agent 引擎"
+description: "本地 sidecar 运行时、内置工具、会话模式与权限档位、上下文压缩、长期记忆与子代理。"
+---
+
+扣瓦的 agent 不在渲染进程里。它跑在一个独立的本地 sidecar 进程中
+（`apps/sidecar/pi-agent`，Bun + TypeScript），
+通过 stdin/stdout 的 NDJSON 协议与前端通信。
+这样做的直接好处是：长任务不会拖垮界面，界面崩溃不会打断正在跑的活儿。
+
+## 一次回合的生命周期
+
+理解 agent 的行为，从这一个循环开始比读任何单个模块都清楚：
+
+<Steps>
+  <Step title="组装上下文">
+    取当前会话历史，注入长期记忆与已装载技能，附上 @ 提及指向的文件内容
+    与附件。是否需要压缩，取决于当前上下文占用了多少。
+  </Step>
+  <Step title="调用模型">
+    把组装好的上下文交给当前选中的模型，拿到增量文本或一组工具调用。
+    换模型只影响这一步。
+  </Step>
+  <Step title="逐个判定工具调用">
+    每个调用先过**会话模式**（这一档允许写吗），再过**权限档位**
+    （这一档要不要问）。两者都放行才继续。
+  </Step>
+  <Step title="需要审批就挂起">
+    挂起不是丢弃：sidecar 保留回合状态，推一条审批事件给前端，
+    你的选择回来之后从同一步继续。被拒绝的调用会作为 blocked 结果回给模型，
+    让它换一条路，而不是卡死。
+  </Step>
+  <Step title="执行并回灌结果">
+    工具在 sidecar 内执行，结果作为 tool 消息回灌进上下文，循环回到第二步。
+    直到模型不再要求工具，这一回合才结束。
+  </Step>
+  <Step title="落库">
+    转录、工具调用与检查点写入会话存储；长会话触发上下文压缩，
+    把早期回合折成摘要。
+  </Step>
+</Steps>
+
+<Note>
+  这个循环里**只有第二步是模型的**，其余全是本地确定性的逻辑。
+  这就是为什么换模型不会改变权限行为——审批、压缩、子代理调度都在模型之外。
+</Note>
+
+## 内置工具
+
+sidecar 注册的工具大致分为这几类：
+
+| 类别 | 工具 | 说明 |
+| --- | --- | --- |
+| 文件与代码 | `read` `write` `edit` `glob` `grep` | 读写与结构化搜索 |
+| 命令执行 | `bash` | 受权限档位与审批规则双重约束 |
+| 联网 | `WebFetch` `WebSearch` | 抓取与检索 |
+| 浏览器 | 浏览器工具集 | 由 `browser-config.ts` 配置 |
+| 网络请求 | HTTP 工具集 | 由 `http-tools.ts` 提供 |
+| 图像 | `screenshot` `generate_image` `echo_image` | 截图、生成与回显，含镜像与配置缓存 |
+| 交互 | `Question` | agent 反问用户，驱动问答流程 |
+| 面板 | `open_plugin_panel` `open_file` | 打开工作台面板或文件 |
+
+`Question` 工具值得单说：它是 agent 主动向用户提问的通道，
+在需要澄清需求或确认关键决策时挂起回合，而不是猜一个然后继续。
+
+## 会话模式：能不能改
+
+<CardGroup cols={4}>
+  <Card title="agent">完整工具集。默认模式，可以读写文件、跑命令。</Card>
+  <Card title="plan">结构性只读。只能读和规划，通过 `plan_exit` 拿到批准后回到 agent 实施。</Card>
+  <Card title="ask">纯只读子集，没有 `bash`。适合"就问问，别动手"。</Card>
+  <Card title="goal">完整工具集 + 跨轮自治。面向"把这个目标做完"的长任务。</Card>
+</CardGroup>
+
+`plan` 模式的设计意图是让规划与实施在**权限上**分开：
+读代码阶段拿到的是只读权限，写代码阶段才拿回写权限。
+
+## 权限档位：问不问
+
+<CardGroup cols={5}>
+  <Card title="ask">write / edit / bash / 配置类工具，每次都确认。</Card>
+  <Card title="workspace-write">工作区内 + 可写根清单内的目录免确认；bash 仍确认，但支持"允许并记住这类命令"。</Card>
+  <Card title="auto-edit">写与编辑全部免确认，含工作区外；bash 仍确认。</Card>
+  <Card title="auto">全免确认。</Card>
+  <Card title="（定制）">还有若干中间档位，可按目录粒度配置。</Card>
+</CardGroup>
+
+### 审批卡的三个按钮
+
+| 按钮 | 语义 |
+| --- | --- |
+| 拒绝 | 拦下这次调用，模型收到 blocked 结果 |
+| 仅这一次 | 放行这一次，**盘上不留任何东西**，下次仍然问 |
+| 允许并记住 | 放行，并写进 `.kova/permissions.local.json`，之后同类不再问 |
+
+"允许并记住"生成的是**前缀规则**，不是精确匹配：
+
+| 记下的命令 | 实际生效的规则 |
+| --- | --- |
+| `pnpm add -D react` | `pnpm add *` |
+| `git log --oneline` | `git log *` |
+| `cat package.json` | `cat *` |
+| `lsof -ti:1420`（第二个词就是值） | 逐字相等，不带 `*` |
+
+<Warning>
+  这些规则必须配两道守卫：可写根清单会限制**能落到哪些目录**，
+  而项目文件只能提议、不能自行授权。也就是说，
+  "记住这类命令"永远不会让 agent 获得你手动批准之外的新目录写权限。
+
+  同时要坦白一点：`workspace-write` 这档**管不住 bash**。
+  命令可以通过 shell 写到工作区之外的任何位置。这一点在
+  `docs/permission-modes.md` 里有专门章节说明，不是设计疏漏而是取舍。
+</Warning>
+
+### 两个维度是分开的
+
+模式决定"能不能改"，档位决定"要不要问"。它们是独立的下拉，组合起来才是最终行为。
+把这两件事混为一谈是关于扣瓦最常见的误解。
+
+## 上下文压缩
+
+长会话总会撞上窗口上限。sidecar 的 compaction 会把较早的对话
+压缩成摘要，保留关键决策、已产出的文件与未完成的目标，
+让任务能继续跑下去而不丢上下文。
+
+## 长期记忆
+
+除了会话内的压缩，扣瓦还有一层跨会话的长期记忆：
+在设置 → 记忆里可以查看与编辑历史条目。这与 `~/.kova/` 下的会话数据同层存放。
+
+## 子代理
+
+子代理让 agent 把大任务拆开并行处理，而不是在一个上下文里串行做完。
+
+<Steps>
+  <Step title="Task">派发一个子代理，带独立的上下文与工具集。</Step>
+  <Step title="TaskWait">等待某个子代理完成并取回结果。</Step>
+  <Step title="TaskList">列出当前存活的子代理及其状态。</Step>
+  <Step title="TaskStop">中止一个正在跑的子代理。</Step>
+</Steps>
+
+子代理定义存放在 `~/.kova/`，可在设置 → 子代理里管理。
+发现机制分三层：内置定义、用户自定义、以及插件提供的定义。
+子代理活动会被持久化，长任务中途重启也能接上
+（见 `docs/subagent-activity-persistence-design.md`）。
+
+## 定时任务与无人值守
+
+自动化（automations）用 [croner](https://github.com/Hexagon/croner) 调度。
+定时任务跑在专门的自动化权限档下——没人盯着的时候，
+危险档位显然不能默认放开。任务完成还可以通过 Webhook 推送到任意服务。
+
+<Card title="下一步" icon="arrow-right" href="/features/plugins">
+  工具之外，还有能直接打开来用的工作台。
+</Card>

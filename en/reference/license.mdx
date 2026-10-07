@@ -1,0 +1,76 @@
+---
+title: "License & acknowledgements"
+description: "Apache License 2.0, what you must preserve when redistributing, and the open-source projects Kova builds on."
+---
+
+## License
+
+Kova is released under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). The full text lives in
+the `LICENSE` file at the repository root.
+
+<Warning>
+  If you redistribute a derivative, keep the `LICENSE` file along with the license
+  notices of the upstream dependencies. Use `./scripts/sync-github.sh` when syncing to
+  the GitHub publish mirror (see the script's header comment).
+</Warning>
+
+## Main dependencies
+
+This project stands on the shoulders of the following (the full list lives in each
+package's `package.json` and `Cargo.toml`):
+
+| Layer | Projects |
+| --- | --- |
+| Runtime & packaging | [Bun](https://bun.sh) · [Tauri v2](https://tauri.app) · [Next.js](https://nextjs.org) · [React](https://react.dev) |
+| Conversation UI | [assistant-ui](https://assistant-ui.com) · [Vercel AI SDK](https://ai-sdk.dev) · [Streamdown](https://streamdown.ai) · [Radix UI](https://radix-ui.com) / [shadcn/ui](https://ui.shadcn.com) · [lucide-react](https://lucide.dev) · [framer-motion](https://motion.dev) · [cmdk](https://cmdk.paco.me) |
+| Agent runtime | [pi-agent-core / pi-ai](https://www.npmjs.com/package/@earendil-works/pi-agent-core) · [Model Context Protocol SDK](https://github.com/modelcontextprotocol) · [croner](https://github.com/Hexagon/croner) |
+| Editor & terminal | [CodeMirror 6](https://codemirror.net) · [xterm.js](https://xtermjs.org) |
+| Office plugins | [Univer](https://univer.ai) · [LeaferJS](https://www.leaferjs.com) · [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) · [exceljs](https://exceljs.dev) · [jszip](https://stuk.github.io/jszip/) |
+| Data & state | [zustand](https://zustand.docs.pmnd.rs) · [zod](https://zod.dev) · [Recharts](https://recharts.org) · [rusqlite](https://github.com/rusqlite/rusqlite) · [keyring](https://github.com/hwchen/keyring-rs) · [axum](https://github.com/tokio-rs/axum) |
+| 3D & visual effects | [Three.js](https://threejs.org) / [@react-three/fiber](https://r3f.docs.pmnd.rs) |
+| CJK typefaces | [Lxgw WenKai](https://github.com/lxgw/LxgwWenKai) · [Noto Sans/Serif SC](https://fonts.google.com/noto) · [Geist](https://vercel.com/geist) · [Inter](https://rsms.me/inter/) · [JetBrains Mono](https://www.jetbrains.com/mono/) |
+
+## Acknowledgements
+
+Kova borrows and depends heavily on community work, from architecture down to detail.
+Special thanks:
+
+<AccordionGroup>
+  <Accordion title="assistant-ui and the Tauri community">
+    They respectively carry the conversational UI and the cross-platform desktop
+    runtime. Their issue trackers and documentation are the first place many hard
+    questions in this repository get answered.
+  </Accordion>
+  <Accordion title="Earendil Works' pi project">
+    The sidecar's session transcripts, context compaction, and subagent design are
+    ported from or modelled on their agent-runtime. The many `PI-Desktop 同设计`
+    comments in the code mark exactly where.
+  </Accordion>
+  <Accordion title="Model Context Protocol">
+    The specification and its TypeScript SDK, which give tool integration a shape to
+    follow.
+  </Accordion>
+  <Accordion title="Univer (DreamNum) and the LeaferJS team">
+    The quality of their spreadsheet and canvas engines sets the ceiling for the office
+    plugins.
+  </Accordion>
+  <Accordion title="lxgw, author of Lxgw WenKai, and every other creator">
+    Everyone who made the typefaces, icons, and components.
+  </Accordion>
+  <Accordion title="Everyone who files a careful issue, opens a PR, or answers in discussions">
+    Software is completed by being shared. If you build on this template, please pass
+    the thanks along.
+  </Accordion>
+</AccordionGroup>
+
+## Contributing
+
+<CardGroup cols={2}>
+  <Card title="Open an issue" icon="bug" href="https://github.com/xqb0407/kova/issues">
+    Include reproduction steps, the version you are on, and the behaviour you expected.
+  </Card>
+  <Card title="Browse the repo" icon="github" href="https://github.com/xqb0407/kova">
+    The README documents the repository layout, prerequisites, and development commands.
+  </Card>
+</CardGroup>

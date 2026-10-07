@@ -1,0 +1,148 @@
+---
+title: "快速开始"
+description: "环境要求、安装桌面端、从源码跑起来，以及 dev 与正式版的数据隔离。"
+---
+
+## 环境要求
+
+从源码运行需要三样东西：
+
+| 依赖 | 版本 | 用途 |
+| --- | --- | --- |
+| [Bun](https://bun.sh) | ≥ 1.x | 依赖安装与工作区脚本 |
+| Rust 工具链 | Tauri v2 所需 | 编译桌面宿主（见 [官方前置指南](https://tauri.app/start/prerequisites/)） |
+| Node.js | LTS | `next dev` 经 `node_modules` 调用 |
+
+## 安装并运行桌面端
+
+<Steps>
+  <Step title="克隆并安装依赖">
+    ```bash
+    git clone https://github.com/xqb0407/kova.git
+    cd kova
+    bun install
+    ```
+
+    这是一个 workspace 仓库，`bun install` 会同时装好
+    `apps/*`、`apps/sidecar/*`、`packages/*` 与 `plugins/*`。
+  </Step>
+  <Step title="起桌面端开发模式">
+    ```bash
+    bun run tauri:dev
+    ```
+
+    这一条命令会同时拉起三样东西：Next 开发服务器（带热更新）、
+    Rust 宿主的增量编译、以及 agent sidecar 进程。
+    首次启动 Rust 编译会比较久，之后都是增量。
+  </Step>
+  <Step title="只想在浏览器里调前端">
+    ```bash
+    bun run dev
+    ```
+
+    只跑 Next 前端，不带 Tauri 宿主。此时 sidecar 会回退到本地 SQLite 存储，
+    适合纯 UI 调试。
+  </Step>
+  <Step title="配置模型">
+    在应用内打开设置 → 模型，添加一个供应商的 API Key。
+    凭据写入系统钥匙串，不会落到磁盘明文里。
+    macOS 上的服务名是 `com.kova.assistant`。
+  </Step>
+</Steps>
+
+## 常用命令
+
+<CodeGroup>
+```bash Terminal
+# 桌面前端开发（Tauri 全流程）
+bun run tauri:dev
+
+# 仅 Next 前端
+bun run dev
+
+# sidecar 单元测试
+bun run test
+
+# 单独构建 agent sidecar（自动先补齐插件产物）
+bun run build:sidecar
+
+# 构建插件产物（面板 HTML + zip 包）
+bun run build:plugins
+cd apps/sidecar/pi-agent && bun run plugins:pack
+
+# 移动端开发（需桌面端先开远程网关并允许局域网访问）
+bun run dev:mobile
+bun run typecheck:mobile
+bun run test:mobile
+
+# 移动端 web 静态导出 → apps/mobile/dist
+bun run build:mobile:web
+```
+</CodeGroup>
+
+## 冒烟测试
+
+不启动 Rust 宿主也能验证 sidecar：
+
+```bash
+cd apps/sidecar/pi-agent && bun run smoke
+```
+
+无 Rust 宿主时它会自动回退本地 SQLite 存储，所以这条命令可以单独用来
+检查协议握手、工具注册和会话读写是否正常。
+
+## dev 与正式版的数据隔离
+
+这一点很容易踩坑，所以单独说明。
+
+`bun run tauri:dev` 会叠加 `apps/desktop/src-tauri/tauri.dev.conf.json`，
+identifier 是 `com.kova.assistant.dev`，显示名「扣瓦 Dev」。
+于是应用数据目录变成：
+
+```
+~/Library/Application Support/com.kova.assistant.dev
+```
+
+由此得到三个结论：
+
+- 安装或卸载正式版**不会**动到 dev 的数据，反之亦然；
+- dev 构建的主密钥放在数据目录内的 `master.dev.key`
+  （规避重编译后钥匙串 ACL 拒读导致的误轮换），正式版走系统钥匙串，
+  两者密文互不可读；
+- 因为密文不同，**跨环境首次使用需要重输一次凭据**。
+
+<Warning>
+  `~/.kova/` 全局层是**有意共用**的——它是机器级的配置层，不归安装器管辖，
+  所以隔离只发生在 `Application Support` 这一层。
+
+  另外，绕过 CLI 的裸 `cargo run` 不会注入 dev 配置，会落回正式版 identifier。
+</Warning>
+
+## 常见问题
+
+<AccordionGroup>
+  <Accordion title="面板打不开 / 提示找不到插件产物">
+    UI 面板的单文件 HTML 与内置插件包 zip 都是**构建产物、不入库**的。
+    跑一次 `bun run build:plugins` 生成面板 HTML，
+    再 `cd apps/sidecar/pi-agent && bun run plugins:pack` 重打 zip。
+    `build:sidecar`、`test`、`smoke` 都会自动补齐缺失的产物。
+  </Accordion>
+  <Accordion title="移动端 Metro 报双 React 实例">
+    这是预期行为。RN 0.86 只能配 react 19.2.3，与桌面的 Next + react 19.3 各持一份。
+    仓库通过 `install.hoistingLimits = "workspaces"` 把移动端依赖装在
+    `apps/mobile/node_modules`，避免 hoisting 互相抬版本。
+  </Accordion>
+  <Accordion title="想换成自己的品牌">
+    这是模板仓库，改品牌一条命令：
+    ```bash
+    ./scripts/rename.sh <new-slug> [--app-name "显示名"] [--dry-run]
+    ```
+    Windows 用 `scripts\rename.bat`。脚本覆盖品牌三形态（slug / Pascal / UPPER）、
+    内部 id `pi-desktop`、Tauri 显示名与 bundle id、`.kova-plugin` 目录名等，
+    改动前会自动备份。
+  </Accordion>
+</AccordionGroup>
+
+<Card title="接下来" icon="arrow-right" href="/features/conversation">
+  看看这些能力在实际使用中长什么样。
+</Card>

@@ -1,0 +1,167 @@
+---
+title: "Agent engine"
+description: "The local sidecar runtime, built-in tools, session modes and approval levels, context compaction, long-term memory, and subagents."
+---
+
+Kova's agent does not live in the render process. It runs in a separate local sidecar
+process (`apps/sidecar/pi-agent`, Bun + TypeScript) and talks to the frontend over an
+NDJSON protocol on stdin/stdout. The direct benefit: long jobs never block the
+interface, and a frontend crash never kills the work in progress.
+
+## The life of one turn
+
+You will understand the agent's behaviour faster from this loop than from any single
+module:
+
+<Steps>
+  <Step title="Assemble context">
+    Pull the session history, inject long-term memory and loaded skills, attach the
+    content of any @-mentioned files and any attachments. Whether compaction is needed
+    depends on how much of the window is already used.
+  </Step>
+  <Step title="Call the model">
+    Hand the assembled context to the currently selected model and receive incremental
+    text or a set of tool calls. Switching models affects only this step.
+  </Step>
+  <Step title="Adjudicate each tool call">
+    Every call passes the **session mode** first (may this tier write?), then the
+    **approval level** (must this tier ask?). Both must allow it before it proceeds.
+  </Step>
+  <Step title="If approval is needed, suspend">
+    Suspending is not discarding: the sidecar holds the turn state, pushes an approval
+    event to the frontend, and resumes from exactly that step when your answer arrives.
+    A denied call comes back to the model as a blocked result so it can take another
+    route instead of deadlocking.
+  </Step>
+  <Step title="Execute and feed results back">
+    The tool runs inside the sidecar, its result is appended to the context as a tool
+    message, and the loop returns to step 2. The turn ends when the model stops asking
+    for tools.
+  </Step>
+  <Step title="Persist">
+    Transcript, tool calls, and checkpoints are written to session storage; a long
+    session triggers compaction, folding early turns into a summary.
+  </Step>
+</Steps>
+
+<Note>
+  **Only step 2 belongs to the model.** Everything else is deterministic local logic.
+  That is why switching models never changes permission behaviour — approval,
+  compaction, and subagent scheduling all live outside the model.
+</Note>
+
+## Built-in tools
+
+The sidecar registers roughly these categories:
+
+| Category | Tools | Notes |
+| --- | --- | --- |
+| Files & code | `read` `write` `edit` `glob` `grep` | Reads, writes, structured search |
+| Commands | `bash` | Constrained by both approval level and rules |
+| Network | `WebFetch` `WebSearch` | Fetch and search |
+| Browser | browser toolset | Configured by `browser-config.ts` |
+| HTTP | HTTP toolset | Provided by `http-tools.ts` |
+| Images | `screenshot` `generate_image` `echo_image` | Capture, generate, echo — with mirroring and config caching |
+| Interaction | `Question` | The agent asks the user, driving a question flow |
+| Panels | `open_plugin_panel` `open_file` | Open a workspace panel or a file |
+
+`Question` deserves a mention: it is the channel through which the agent asks the user
+something, suspending the turn when it needs to clarify a requirement or confirm a
+decision, instead of guessing and continuing.
+
+## Session mode: whether it may write
+
+<CardGroup cols={4}>
+  <Card title="agent">The full toolset. The default — reads, writes, and runs commands.</Card>
+  <Card title="plan">Structurally read-only. It can read and plan, then uses `plan_exit` to get approval before handing back to agent to implement.</Card>
+  <Card title="ask">A read-only subset with no `bash`. For "just tell me, don't touch anything".</Card>
+  <Card title="goal">Full toolset plus cross-turn autonomy, for "finish this objective" work.</Card>
+</CardGroup>
+
+The point of `plan` is separating planning from implementation **by permission**:
+the reading phase gets read-only rights, and write rights only come back at the
+implementation phase.
+
+## Approval level: whether it must ask
+
+<CardGroup cols={5}>
+  <Card title="ask">write / edit / bash / config tools — every single one asks.</Card>
+  <Card title="workspace-write">Inside the workspace and listed writable roots needs no approval; bash still asks, with "remember this class of command" support.</Card>
+  <Card title="auto-edit">Writes and edits are fully auto-approved, including outside the workspace; bash still asks.</Card>
+  <Card title="auto">Everything auto-approved.</Card>
+  <Card title="(custom)">Several intermediate levels, configurable per directory.</Card>
+</CardGroup>
+
+### The approval card's three buttons
+
+| Button | Meaning |
+| --- | --- |
+| Deny | Blocks this call; the model receives a blocked result |
+| Just this once | Allows it this time, **leaving nothing on disk**; the next one asks again |
+| Allow and remember | Allows it and records the rule in `.kova/permissions.local.json`, so equivalents stop asking |
+
+"Allow and remember" generates a **prefix rule**, not an exact match:
+
+| You approved | Effective rule |
+| --- | --- |
+| `pnpm add -D react` | `pnpm add *` |
+| `git log --oneline` | `git log *` |
+| `cat package.json` | `cat *` |
+| `lsof -ti:1420` (second word is a value) | Exact match, no `*` |
+
+<Warning>
+  These rules must carry two guards. The writable-root list restricts **where** writes
+  may land, and project files can only be *proposed*, never self-authorised. So
+  "remember this class of command" never grants write access to a directory you did not
+  approve manually.
+
+  To be straightforward about one thing: `workspace-write` **does not contain bash**.
+  A command can reach any path outside the workspace through the shell. This has its own
+  section in `docs/permission-modes.md` — it is a deliberate trade-off, not an oversight.
+</Warning>
+
+### The two dimensions are separate
+
+Mode decides *whether it may change things*; approval level decides *whether it must
+ask*. They are independent dropdowns, and the combination is the actual behaviour.
+Collapsing them is the most common misunderstanding about Kova.
+
+## Context compaction
+
+Long conversations always hit the window limit. Compaction folds older turns into a
+summary while preserving key decisions, files already produced, and unfinished
+objectives, so a task keeps going instead of losing its thread.
+
+## Long-term memory
+
+Beyond in-session compaction, Kova keeps a layer of cross-session memory. Entries are
+viewable and editable under Settings → Memory, stored in the same layer as the session
+data under `~/.kova/`.
+
+## Subagents
+
+Subagents let the agent split large work and process it in parallel instead of grinding
+through it serially in one context.
+
+<Steps>
+  <Step title="Task">Dispatch a subagent with its own context and toolset.</Step>
+  <Step title="TaskWait">Wait for a subagent to finish and collect its result.</Step>
+  <Step title="TaskList">List live subagents and their status.</Step>
+  <Step title="TaskStop">Terminate a running subagent.</Step>
+</Steps>
+
+Definitions live in `~/.kova/` and are managed under Settings → Subagents. Discovery has
+three layers: built-in, user-defined, and plugin-provided. Subagent activity is
+persisted, so a long job survives a restart
+(see `docs/subagent-activity-persistence-design.md`).
+
+## Scheduled tasks and unattended runs
+
+Automations are scheduled with [croner](https://github.com/Hexagon/croner). Scheduled
+runs use a dedicated automation approval level — clearly, the most dangerous levels
+cannot be the default when nobody is watching. Results can be pushed to any service
+over webhooks.
+
+<Card title="Next" icon="arrow-right" href="/en/features/plugins">
+  Beyond tools, there are workspaces you can actually open.
+</Card>

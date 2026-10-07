@@ -1,0 +1,133 @@
+---
+title: "Extending Kova"
+description: "Writing a plugin, connecting an MCP server, adding a skill, and the conventions behind the NDJSON protocol and cross-surface contract."
+---
+
+## Writing a plugin
+
+<Steps>
+  <Step title="Create the directory and manifest">
+    ```bash
+    mkdir -p plugins/my-plugin/.kova-plugin
+    ```
+
+    The manifest is `.kova-plugin/plugin.json`:
+    ```json
+    {
+      "name": "my-plugin",
+      "version": "0.1.0",
+      "description": "One line on what this plugin does",
+      "author": { "name": "You" },
+      "category": "Productivity",
+      "icon": "icon.svg",
+      "keywords": ["my", "plugin"],
+      "skills": "skills",
+      "panels": "panels.json",
+      "mcpServers": ".mcp.json"
+    }
+    ```
+  </Step>
+  <Step title="Decide which layers you need">
+    `skills/` contributes skills (the agent knows how), `panels.json` registers panels
+    (a human can open it), and `.mcp.json` contributes an MCP server (the agent can call
+    it). One layer, or all three.
+  </Step>
+  <Step title="Register it in the marketplace">
+    Add an entry to `plugins/marketplace.json` and it shows up in the in-app marketplace.
+  </Step>
+  <Step title="Build artifacts and verify">
+    ```bash
+    bun run build:plugins
+    cd apps/sidecar/pi-agent && bun run plugins:pack
+    ```
+
+    Panel HTML and the bundled zips are build artifacts and are not committed.
+    `build:sidecar` / `test` / `smoke` fill in what is missing.
+  </Step>
+</Steps>
+
+The design is documented in `docs/plugin-system-design.md` in the repository.
+
+## Connecting an MCP server
+
+See `docs/mcp-design.md`. The essentials:
+
+- **Multi-server connection pool** — several MCP servers connect concurrently without
+  blocking each other;
+- **Two-layer config merge** — global config merges with workspace config, workspace
+  winning;
+- **Output guards** — MCP output is treated as untrusted input and injected content is
+  isolated and marked;
+- **OAuth** — supported for servers that require authorisation;
+- **Approval and audit** — MCP tool calls go through the same approval flow as any other
+  tool, and leave an audit trail.
+
+A plugin can ship its own MCP server definition through the manifest's `mcpServers`
+field — `ui-design` does exactly this, which is how the agent can drive a design canvas
+directly.
+
+## Adding a skill
+
+Skills live in a plugin's `skills/` directory or come from user-level configuration. A
+skill is a knowledge pack loaded into the agent's context, loaded and managed under
+Settings → Skills.
+
+The bundled iOS / Material / generic mobile design-system packs are shipped exactly this
+way and load on demand through `use_skill`, rather than crowding every context.
+
+## Adding a built-in tool
+
+Tools live in `apps/sidecar/pi-agent/src/tools/` and are registered in `tools.ts`. When
+you add one, you must decide its permission behaviour:
+
+<Warning>
+  *Whether a tool may be used* is decided by **session mode**; *whether it must ask* is
+  decided by the **approval level**. They are two separate dropdowns in the UI. Wire a
+  new tool to the right dimension on both sides, or you will produce inconsistencies
+  like "plan mode can write files".
+</Warning>
+
+When you change the permission enums, remember to update the enumeration-expansion
+checklist in `docs/permission-modes.md` — not for tidiness, but to keep the enums and
+the UI options from drifting apart.
+
+## The NDJSON protocol and cross-surface contract
+
+<Columns cols={2}>
+  <Column title="pi-protocol">
+    `packages/pi-protocol` defines the contract shared by frontend and backend. The
+    desktop frontend, the sidecar, and the mobile app all take their types from here.
+    Change the protocol there, not in one surface's private copy.
+  </Column>
+  <Column title="NDJSON over stdio">
+    The desktop host and sidecar speak a one-JSON-object-per-line protocol. Business
+    table access rides host RPC on stdout, so logs and protocol frames are explicitly
+    separated on the channel.
+  </Column>
+</Columns>
+
+A single sidecar instance serves both the direct desktop connection and remote `/ws`
+clients at once, so any change has to account for multiple surfaces being online.
+
+## Rebranding
+
+This is a template repo, so putting your own brand on it is one command:
+
+```bash
+./scripts/rename.sh <new-slug> [--app-name "Name"] [--dry-run]   # macOS / Linux
+scripts\rename.bat <new-slug> [--app-name "Name"] [--dry-run]   # Windows
+```
+
+It covers all three brand forms (slug / Pascal / UPPER), the internal `pi-desktop` id,
+the Tauri display name and bundle id, and `.kova-plugin` directory names — and backs
+everything up before changing it.
+
+<Note>
+  After renaming, remember to update the identifier in
+  `apps/desktop/src-tauri/tauri.dev.conf.json`. That identifier is what separates dev
+  from release, and scripts are easy to miss it.
+</Note>
+
+<Card title="Next" icon="arrow-right" href="/en/developers/release">
+  How to package and ship a release.
+</Card>

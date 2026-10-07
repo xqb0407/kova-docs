@@ -1,0 +1,122 @@
+---
+title: "构建与发布"
+description: "一键打包脚本、Tauri 打包配置、产物位置，以及打包与发版之间的区别。"
+---
+
+## 一键打包
+
+```bash
+./scripts/build-release.sh    # macOS / Linux
+scripts\build-release.bat     # Windows
+```
+
+这条脚本依次做：依赖安装 → 构建 sidecar → 构建前端 → 产出安装包。
+
+<CodeGroup>
+```bash 常用参数
+--skip-install   跳过依赖安装
+--debug          debug 构建
+--allow-dev      允许在 dev 依赖状态下打包
+--check          只做环境预检，不实际构建
+```
+</CodeGroup>
+
+## 分步构建
+
+<CodeGroup>
+```bash Terminal
+# 只构建前端产物
+bun run build
+
+# 只构建桌面安装包
+# beforeBuildCommand 会自动先跑 build:sidecar + build
+bun run tauri:build
+
+# 只构建 agent sidecar（自动先补齐插件产物）
+bun run build:sidecar
+
+# 发布流程
+bun run release
+```
+</CodeGroup>
+
+## 产物位置
+
+```
+apps/desktop/src-tauri/target/release/bundle/
+```
+
+| 平台 | 产物 |
+| --- | --- |
+| macOS | `.dmg` / `.app` |
+| Windows | NSIS setup `.exe` |
+
+<Note>
+  Windows **不产 MSI**。WiX 工具链对中文产品名不稳定，
+  NSIS 在这个场景下更可靠，所以只保留 NSIS 一条路径。
+</Note>
+
+## 打包 ≠ 发版
+
+这两件事经常被混在一起，但职责完全不同：
+
+| | 做什么 | 谁做 |
+| --- | --- | --- |
+| **打包** | 编译出安装包 | `build-release.sh` / `tauri:build` |
+| **发版** | 版本号同步、打 tag、推送远端 | `bun run release`（`scripts/release.mjs`） |
+| **镜像到 GitHub** | 推送镜像并清理 tag 与历史 | `./scripts/sync-github.sh` |
+
+`release.mjs` **只**做版本号同步、打 tag 与推送远端——
+它不会把安装包挂到 GitHub Release 上。
+需要同步 GitHub 发布镜像（含 tag 与历史清理）时用
+`./scripts/sync-github.sh`。详见仓库内 `docs/release.md`。
+
+## 移动端是独立流水线
+
+移动端走单独的 `release-mobile.yml`：
+
+- **仅手动触发**，不随主发布自动跑；
+- 产出未签名的 IPA / APK，作为 artifacts 保留；
+- **不挂到 Release** 上。
+
+这样拆分是因为移动端目前还没有正式的分发与签名流程，
+自动化上去只会产出拿不到的产物。
+
+## 版本号
+
+版本号是单一来源的，跨 `package.json`、Tauri 配置与各 workspace 包同步。
+`bun run release` 会先做版本号同步再打 tag。
+改版本号时不要只手改某一个 `package.json`。
+
+## 发布检查清单
+
+<Steps>
+  <Step title="确认 dev 环境能跑通">
+    `./scripts/build-release.sh --check` 做环境预检。
+  </Step>
+  <Step title="确认测试通过">
+    ```bash
+    bun run test              # sidecar 单元测试
+    bun run test:mobile       # 移动端单元测试
+    bun run typecheck:mobile  # 移动端类型检查
+    ```
+  </Step>
+  <Step title="确认插件产物齐全">
+    ```bash
+    bun run build:plugins
+    ```
+    面板 HTML 与 zip 不入库，漏了会在安装后才暴露。
+  </Step>
+  <Step title="打包并验证安装包">
+    从产物目录取安装包，在干净环境装一次再跑冒烟，
+    尤其验证钥匙串读写与 sidecar 拉起。
+  </Step>
+  <Step title="发版">
+    `bun run release` 打 tag 推远端；
+    需要 GitHub 镜像时再跑 `./scripts/sync-github.sh`。
+  </Step>
+</Steps>
+
+<Card title="回到参考" icon="arrow-right" href="/reference/roadmap">
+  看接下来打算做什么。
+</Card>

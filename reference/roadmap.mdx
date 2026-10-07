@@ -1,0 +1,81 @@
+---
+title: "路线图"
+description: "已落地的能力、正在推进的移动端与远程能力增强，以及待办事项。"
+---
+
+> 活文档：随迭代更新，欢迎以 issue 讨论优先级。
+
+## 已落地
+
+<CardGroup cols={2}>
+  <Card title="桌面主应用" icon="check">
+    多轮对话、附件、@ 提及、检查点回溯、提示词排队、
+    模型选择器、斜杠命令、语音输入。
+  </Card>
+  <Card title="pi-agent sidecar 运行时" icon="check">
+    MCP 接入、技能装载、子代理调度、长期记忆、上下文压缩、
+    内置编码 / 浏览器 / HTTP / 截图工具。
+  </Card>
+  <Card title="插件系统与办公套件" icon="check">
+    面板系统与本地市场；office、canvas、ui-design 三个工作台。
+  </Card>
+  <Card title="凭据与系统集成" icon="check">
+    Keychain / 凭据管理、Webhook 通知、定时任务、外观主题。
+  </Card>
+  <Card title="局域网远程访问" icon="check">
+    桌面网关 + 配对码 + 浏览器网页端。
+  </Card>
+  <Card title="移动 App" icon="check">
+    Expo + React Native，走同一 WS 网关；扫码配对，
+    token 存 Keychain / Keystore。
+  </Card>
+</CardGroup>
+
+## 推进中：移动 App
+
+原生壳已经落地（Expo，不是 Tauri mobile——复用桌面网关的 `/ws` 协议，
+与浏览器网页端同源）。剩下的是移动场景真正需要的东西：
+
+- **推送通知**：任务完成、等待审批、定时任务结果到达手机。
+  这需要网关侧的设备令牌登记与前台保活；
+- **生物识别解锁 + token 轮换**：当前 token 长效不过期，
+  撤销只能靠桌面端「撤销所有设备」；
+- **离线草稿与弱网体验**：蜂窝 / Wi-Fi 切换下的排队发送与在飞流续播；
+- **窄屏交互打磨**：手势、附件选择、会话列表重排。
+
+## 推进中：远程能力增强
+
+从"同一 Wi-Fi 能用"走向"出门在外也敢用"：
+
+- **端到端加密**：配对后协商密钥，WS 流量桌面端加密，
+  云端（隧道 / 中继）零明文；
+- **稳定公网接入**：摆脱临时隧道地址，支持固定域名与自动重连；
+- **断线与恢复**：WS 断线期间的消息补拉、重连后的会话状态对齐；
+- **多设备并发**：桌面 + 多个远端同时在线的输入仲裁与视图同步；
+- **远程审批**：危险操作确认推送到已配对设备，手机上放行。
+
+## Backlog
+
+<CardGroup cols={2}>
+  <Card title="发布矩阵" icon="tag">
+    macOS / Windows 双平台代码签名与自动更新。
+  </Card>
+  <Card title="性能迭代" icon="gauge">
+    冷启动速度与长会话内存占用。
+  </Card>
+  <Card title="插件生态" icon="puzzle-piece">
+    更多官方示例插件，以及第三方市场接入。
+  </Card>
+  <Card title="会话迁移" icon="right-left">
+    会话跨端迁移与备份恢复的用户侧入口。
+  </Card>
+</CardGroup>
+
+## 欢迎参与
+
+优先级没有定死，欢迎开 issue 讨论。一个好用的 issue 至少包含：
+你想解决的具体场景、现在怎么绕过去的、以及你期望的行为。
+
+<Card title="许可证" icon="scale-balanced" href="/reference/license">
+  Apache-2.0，以及需要保留的声明。
+</Card>
