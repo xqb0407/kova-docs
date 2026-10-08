@@ -64,6 +64,10 @@
                   "href": "/features/conversation"
                 },
                 {
+                  "label": "循环视图",
+                  "href": "/features/agent-loop"
+                },
+                {
                   "label": "提示词缓存",
                   "href": "/features/prompt-cache"
                 },
@@ -168,6 +172,8 @@
                 "icon": "bolt",
                 "pages": [
                   "features/conversation",
+                  "features/agent-engine",
+                  "features/agent-loop",
                   "features/prompt-queue",
                   "features/prompt-cache",
                   "features/modes",
@@ -258,6 +264,10 @@
                 {
                   "label": "Conversation workspace",
                   "href": "/en/features/conversation"
+                },
+                {
+                  "label": "Loop view",
+                  "href": "/en/features/agent-loop"
                 },
                 {
                   "label": "Prompt caching",
@@ -364,6 +374,8 @@
                 "icon": "bolt",
                 "pages": [
                   "en/features/conversation",
+                  "en/features/agent-engine",
+                  "en/features/agent-loop",
                   "en/features/prompt-queue",
                   "en/features/prompt-cache",
                   "en/features/modes",
