@@ -1,0 +1,151 @@
+---
+title: "Loop view"
+description: "See what the agent is thinking each iteration, which tools it called, and why it stopped — plus how much survives a crash."
+---
+
+A single reply can run a dozen iterations internally: call the model, run tools,
+feed the results back, call the model again. All you see is the final paragraph.
+Which step was slow, which tool failed three times, why the model decided to change
+approach — all of that is a black box by default.
+
+The loop view opens that box. It lives in the right-hand panel next to
+**Trace**, reachable from the **More** menu beside the session title → **Loop**.
+
+## Two angles, not the same thing
+
+Same session, same underlying data, two different ways to slice it:
+
+| | Trace | Loop |
+| --- | --- | --- |
+| Layered by | Span type (LLM / tool / retry) | **Iteration** (one loop = intent → tools → fed back) |
+| Best at answering | Where did the time go | What the model was trying to do, and why it stopped |
+| Shape | Waterfall | Iteration bands + feedback edges |
+
+Use Trace to debug performance, Loop to debug behaviour.
+
+## Reading an iteration band
+
+Each iteration of the loop is one **band**:
+
+```
+┌ Iteration 3   Confirmed 4.18.2, bumping to ^4.21.0 and reinstalling   3.27s ┐
+│  claude-sonnet-4.5                              ▓▓▓▓▓▓░░░       1.92s       │
+│  edit                                    ▓▓░░░                   148ms      │
+│  bash                                        ▓▓▓▓▓▓▓▓▓▓▓▓       …      ⟳   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                            ↓ fed back
+```
+
+**The band header is the model's own stated intent** — the first sentence of that
+iteration's reply. This is the most valuable layer in the whole view: it tells you
+what the model set out to do, instead of making you infer it from tool names.
+
+**One row per step.** The bar on the right is positioned by start time and sized by
+duration, so you can compare speeds horizontally at a glance. Failed rows are tinted
+red (exit codes like `exit 127` are shown inline); retries are amber.
+
+**The arrow between bands is the feedback edge**, labelled with a summary of what
+went back to the model. That edge is the skeleton of the loop — a waterfall chart
+cannot show it.
+
+**Subagents** appear indented inside the iteration that dispatched them, and the
+parent's iteration count includes them.
+
+## Token readings at four levels
+
+Context grows every iteration, and that growth drives the cost of long tasks, so
+tokens are reported at four levels:
+
+| Level | Where | What it reads |
+| --- | --- | --- |
+| Step | `↑15.2k` on the LLM row | Total **context** carried into that request |
+| Iteration | Band header `context 15.2k · out 1.1k` | Context size at the end of that iteration |
+| Run | Top summary `↑ 67,740 / ↓ 4,680` | Totals including subagents |
+| Session | Bottom-left summary | Across runs, plus cache hits |
+
+Cache hits are shown separately in green, because that portion is not billed again.
+
+## Why it stopped
+
+The bar at the bottom answers "why did the loop end here":
+
+| Reason | Meaning |
+| --- | --- |
+| Completed | The model stopped asking for tools |
+| User stop | You pressed Stop. **Not an error** — it does not pollute the error rate |
+| Context overflow | Re-run after compaction |
+| Length budget exhausted | Kept hitting the output cap; auto-continue budget used up |
+| Error | Model or provider reported a failure |
+| Interrupted | The process died mid-run (see below) |
+
+The first five are distinguished at collection time: a user cancelling and a model
+erroring are two different things, and conflating them makes the error rate
+meaningless.
+
+## Long tasks: watch it while it runs
+
+Iterations are **persisted per turn**, so while a task is still running the bands
+grow one at a time (refreshed every 2 seconds when tools are in flight). You do not
+have to wait for it to finish.
+
+This relies on a deliberate tradeoff: the trace is written once per turn rather than
+once per run. Turn-level writes happen once per iteration, independent of tokens —
+the streaming hot path still does zero IO.
+
+## What survives a crash
+
+This is the trace's only crash safety net.
+
+If the sidecar is killed mid-task, the complete in-memory tree for that run is lost.
+But because iterations are persisted per turn, the next launch **rescues** them: a run
+marked **Interrupted** appears in the panel, containing every turn that closed before
+the crash.
+
+**Be clear about the boundary**: what you lose is the **currently open turn**. If it
+crashed in the middle of a long command, that turn will not appear — its tool never
+produced a result. Every completed turn is there.
+
+(The conversation transcript has its own fallback, so you will not lose where you got
+to in the chat. What is lost is the timing and attribution structure.)
+
+## Filtering
+
+A long session can have dozens of iterations and hundreds of steps; scrolling will
+not find anything.
+
+- **Failures only** — cut straight to every failed, retried, or in-flight step
+- **By tool name** — click tool name buttons to narrow down (combinable with the above)
+
+The match ratio is shown live (e.g. `13/118 steps`). Switching runs clears filters.
+
+## Data and resolution
+
+<Note>
+  Traces live at `traces/<sessionId>.jsonl` under the session data directory, one
+  line per complete run. In-flight runs use `traces/<sessionId>.live.jsonl`, appended
+  per turn.
+</Note>
+
+A few truncations and tradeoffs worth knowing:
+
+- **Request contexts and tool outputs are stored truncated.** The trace is a metadata
+  view, not a copy of the transcript. Failed tool output is kept more generously
+  (stderr is the diagnostic core); successful output is cut tighter.
+- **Very long runs drop the bodies of early iterations.** The total retained text per
+  run is capped; once exceeded, the **oldest** iterations are released first — the most
+  recent request is the one you want. Opening an early iteration at that point still
+  shows structure, timing, and status; only the request context is empty. This is what
+  keeps memory from growing without bound as a run gets longer.
+- **No token-level streaming.** The view's granularity is one iteration; you cannot
+  watch characters stream in.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Agent engine" icon="cpu" href="/en/features/agent-engine">
+    The machinery behind the loop: modes, permissions, compaction, subagents.
+  </Card>
+  <Card title="Subagents" icon="users" href="/en/features/subagents">
+    Dispatched parallel work shows up here as indented nested runs.
+  </Card>
+</CardGroup>

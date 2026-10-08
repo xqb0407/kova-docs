@@ -50,6 +50,9 @@ module:
   compaction, and subagent scheduling all live outside the model.
 </Note>
 
+How many iterations this loop ran, what each was trying to do, and why it stopped are
+invisible by default. To see inside it, see the [Loop view](/en/features/agent-loop).
+
 ## Built-in tools
 
 The sidecar registers roughly these categories:
@@ -135,8 +138,12 @@ objectives, so a task keeps going instead of losing its thread.
 ## Long-term memory
 
 Beyond in-session compaction, Kova keeps a layer of cross-session memory. Entries are
-viewable and editable under Settings → Memory, stored in the same layer as the session
-data under `~/.kova/`.
+viewable and editable under Settings → Memory.
+
+Memory lives in two layers: a global one at `~/.kova/memory` (shared across sessions and
+workspaces) and a workspace one at `<workspace>/.kova/memory`. The sessions themselves
+(transcript and traces) are not there — they live under `sessions/` in the app data
+directory.
 
 ## Subagents
 
@@ -150,7 +157,8 @@ through it serially in one context.
   <Step title="TaskStop">Terminate a running subagent.</Step>
 </Steps>
 
-Definitions live in `~/.kova/` and are managed under Settings → Subagents. Discovery has
+Definitions live in `~/.kova/subagents` (machine-wide) or `<workspace>/.kova/subagents`
+(committable, shared with your team), both managed under Settings → Subagents. Discovery has
 three layers: built-in, user-defined, and plugin-provided. Subagent activity is
 persisted, so a long job survives a restart
 (see `docs/subagent-activity-persistence-design.md`).
