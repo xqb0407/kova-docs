@@ -1,0 +1,248 @@
+---
+title: "Subagent capabilities"
+description: "Tools, skills, MCP, knowledge sources, memory — five orthogonal dimensions and one rule: undeclared means unreachable."
+---
+
+This page states a single rule; everything else is a consequence of it:
+
+<Warning>
+  **Undeclared means unreachable.** Not "granted, then refused" — what the definition
+  never wrote shows up neither in the subagent's toolset nor in its prompt. The model
+  never sees a capability that does not exist, so it never tries; and if it does try, what
+  it gets back is a plain "you don't have that".
+</Warning>
+
+## A complete definition
+
+```yaml
+name: customer-service
+description: Handles refund questions and after-sales policy lookups
+tools: [read, glob, grep, WebFetch]
+skills: [refund-policy, tone-guide]
+mcp:
+  servers: [crm, notion]
+knowledge:
+  - name: Product manual
+    path: ./docs/**/*.md
+memory: private
+maxTurns: 60
+prompt: |
+  You are an after-sales specialist …
+```
+
+A definition like this turns a subagent that can only read files and run commands into an
+after-sales agent that can reach the business knowledge base. Below is what each
+dimension actually hands it.
+
+## Dimension 1: tools
+
+The allowlist was expanded: it used to hold only
+`bash / read / write / edit / glob / grep`, so no business tool was reachable at all.
+What you can grant now is an **allowlist of the allowlist**:
+
+| Group | Tools |
+| --- | --- |
+| Built-in coding tools | `bash` `read` `write` `edit` `glob` `grep` |
+| Its own delegation | `task_output` `task_stop` |
+| Network | `WebFetch` `WebSearch` |
+| Capability grant targets | `use_skill` `todo` |
+
+**Tools deliberately left out** — their absence matters as much as the expansion:
+
+| Tool | Why not |
+| --- | --- |
+| `Question` | A subagent cannot ask the user; its system prompt already says so |
+| `mcp` / `memory_*` | Mounted only through their dimension; declaring them by bare name would bypass scope and isolation |
+| `browser` `screenshot` `imagegen` | Main-agent interaction surface; a subagent has no UI |
+| `open_file` `open_panel` | They work by emitting a panel event; a subagent has no panel |
+| `subagents_*` `skills_*` `plugins_*` `scheduler_*` | Management surface, already absent from the session toolset |
+
+**Declared names are case-insensitive; what gets stored is always the canonical
+registered name.** Writing `webfetch` resolves to `WebFetch`. That rule exists because
+of a real bug: session tool registrations are not uniformly cased (`WebFetch` is
+CamelCase, `use_skill` is snake_case), and the old parser lowercased every declared name
+— so CamelCase registrations never matched and the tool silently resolved to nothing,
+with no error anywhere.
+
+There is a second condition at runtime: the declared tool must **actually exist in the
+current session's toolset**. Only when both hold is it granted; otherwise you get a
+diagnostic saying what was missing, rather than a quiet absence.
+
+## Dimension 2: skills
+
+`skills` is an allowlist by name, resolved through the same layered discovery the main
+agent uses (workspace > ecosystem·workspace > system > ecosystem·user > plugin).
+
+- No `skills` declared → no skill catalog injected, and `use_skill` is unavailable;
+- Declared but missing in this scope → **a diagnostic, and that entry disappears from
+  the catalog**, never silently: you need to know that something you declared is not in
+  effect;
+- The catalog carries only name / description / location; **bodies load on demand via
+  `use_skill`**.
+
+The cap is 16 skills — each one occupies a line of the system prompt catalog.
+
+## Dimension 3: MCP servers
+
+A subagent does not get the shared gateway, it gets a **scoped gateway**:
+
+- `search` / `describe`: the tool index is filtered to the declared servers;
+- `call` on an undeclared server → **refused immediately**, with a message telling it
+  which servers it was authorized for;
+- `call` on a declared server → runs directly if it matches that server's approval
+  allowlist; otherwise the **approval card is forwarded to the parent thread**, where you
+  see and decide it.
+
+That last rule is the only place in this design where a subagent can **block on a
+human**. It was chosen over "refuse everything" because the approval allowlist is empty
+by default: refusing outright would make every unconfigured MCP server unavailable to
+subagents, and vertical business agents useless. Forwarding reuses the existing
+mechanism — no new approval system — and a subagent parked on a card in the thread you
+are actually watching is the only honest option when it cannot ask you itself.
+
+The cost is accepted explicitly: a background subagent waiting for a decision stays
+parked, and `TaskStop` can end it.
+
+> If servers are declared but currently disabled or unconfigured, the gateway is
+> **still mounted** and a diagnostic is recorded. "The capability does not exist" and "the
+> configuration is not in place yet" call for opposite next steps — the second one means
+> configuring servers in settings, not leaving the model convinced it lacks the ability.
+
+## Dimension 4: knowledge sources
+
+A knowledge source is a document: a name plus a workspace-relative glob, body left on
+disk.
+
+**Never preloaded.** The system prompt gets one catalog line per source; retrieval goes
+through `kb_search`, an in-memory line-by-line scan that returns ranked `path:line`
+hits, and the subagent opens the interesting files itself with `read`. A hit is one
+line, not the answer — the tool description says exactly that.
+
+<Columns cols={3}>
+  <Card title="8 MiB">Bytes read per search, sized for a typical product manual.</Card>
+  <Card title="50 hits">Max hits returned per call — tighter than `grep`'s 200.</Card>
+  <Card title="400 chars">Max length of a single hit line, same as `grep`.</Card>
+</Columns>
+
+Hitting a budget **truncates loudly**, never silently — a silent truncation has the model
+believing the library holds nothing else.
+
+**The settings page uses a directory picker**: pick a folder and it collapses into a
+workspace-relative glob automatically. Making someone type `./docs/**/*.md` should not be
+prerequisite knowledge for handing a knowledge base to an agent. Picking a directory
+outside the workspace is refused outright (retrieval resolves via
+`path.join(cwd, rel)`, so an absolute path becomes a meaningless string that silently
+matches nothing).
+
+**Declaring a knowledge source requires granting `read` too**, otherwise it gets
+`path:line` hits it cannot open. The parser only warns (it must not cost you the whole
+definition); the save path refuses outright — and the editor flags it inline while you
+type, rather than rejecting you after you finish.
+
+<Note>
+  External systems (spreadsheets, Notion, databases) **do not go through knowledge
+  sources** — they are granted by `mcp.servers`, and the agent calls those servers'
+  tools directly. Making MCP a knowledge-source type would say the same thing twice and
+  add a type branch to maintain.
+</Note>
+
+## Dimension 5: memory
+
+Three mutually exclusive modes, defaulting to none:
+
+| Mode | Meaning | Directory |
+| --- | --- | --- |
+| None (default) | Nothing injected, no tools; every delegation starts cold | — |
+| Private | Private namespace, accumulates across delegations, visible only to it | `<workspace>/.kova/agent-memory/<name>/` |
+| Shared | Shares the main agent's workspace-scoped memory | `<workspace>/.kova/memory/` |
+
+**Private is the recommended mode.** A subagent cannot write into the user's main memory,
+so pollution is structurally impossible; and what it produces may well be a hallucination,
+which by rights should not enter the main agent's next prompt. Shared is kept because
+"a business agent and the main agent share one lesson" is a real scenario — the UI states
+it plainly rather than blocking it. Informed, not prevented.
+
+The trio `memory_write` / `memory_read` / `memory_search` mounts only when the mode is
+not none. One detail matters: **the `scope` parameter is not in the tool schema** — the
+directory is nailed shut in the closure, so a subagent forging `scope: "global"` in its
+arguments has nowhere to put it. Isolation is structural, not a runtime check of
+parameter values.
+
+Delivery mirrors the main agent's two layers: root-level `*.md` files are treated as
+resident memory and injected through a prompt section (4K per file, 12K for the whole
+block; files over budget are dropped whole with a note left behind). `daily/*.md` takes
+part in keyword search only.
+
+Concurrency: several delegations of the same subagent write the same directory, so
+appends are serialized per directory — no file locks, since the sidecar is a single
+process and in-process serialization is enough. The main memory's global switch does
+**not** govern subagent memory: that switch is the main agent's prompt-cache discipline,
+and letting a default-off global switch veto an explicit `memory: private` would be the
+wrong coupling.
+
+> How `knowledge` and `memory` divide the work: `knowledge` is **external authoritative
+> material** (product manuals, policy libraries), read-only; `memory` is **what the agent
+> learned itself**, read and written. One is what the world told it, the other is what it
+> remembers.
+
+## How the prompt is assembled
+
+The order is fixed: **framing → capability catalog → definition body**. The capability
+catalog keeps its own order too: skills → knowledge sources → MCP → memory. The
+definition body goes last, so it has the final say on "how to work".
+
+<Note>
+  **Invariant**: a dimension that is not declared drops its whole section — so an
+  existing definition's assembled prompt stays **byte-identical**, which is what lets the
+  provider-side prompt cache hit. That invariant is covered by a test.
+</Note>
+
+## Editing it in settings
+
+The editor is a **second-level page**, not a dialog. Once the capability dimensions
+existed, its content no longer fit the height of an `sm:max-w-2xl` dialog — the form was
+pushed out of the viewport and the save button had to be scrolled to. As a full page it
+gets a top back action, an independently scrolling content area, a footer action bar
+that never leaves the screen, and a two-column layout that brings the height back to one
+screen.
+
+The form is grouped into five sections: basics / system prompt / available tools /
+capabilities / knowledge sources.
+
+A few implementation trade-offs are worth calling out:
+
+- **All three pickers use real candidates, never free text** — tools come from the
+  sidecar's grantable catalog, skills from the skill list, MCP servers from the MCP
+  configuration. A capability declaration **references** an existing entity; it does not
+  define one, and a free-text box only produces names that do not exist. The backend is
+  the single source of truth; an older sidecar without the field falls back to the old
+  six tools instead of blanking the page.
+- **A name that resolves to nothing appears as a warning-colored chip** — hover to see
+  why, click to remove. Never dropped silently.
+- **The YAML tab goes through the same parser and validation**; the four capability keys
+  you type there take effect verbatim, and the form tab never overwrites that editing.
+- **Built-in definitions show their capabilities read-only** (skills / MCP / knowledge
+  sources / memory mode) — otherwise "why can't this agent reach my Notion" has no way to
+  be diagnosed. "Copy to system level" carries all four dimensions with it, with no
+  silent field loss.
+
+## Explicitly out of scope
+
+<Warning>
+  These sit outside the boundary on purpose, not by omission:
+
+  - **Vector RAG / embeddings / chunking**: the repo has no such infrastructure today.
+    When it is genuinely needed it replaces `kb_search` under the same dimension,
+    leaving the schema untouched;
+  - **Business API (HTTP) tools**: `WebFetch` / `WebSearch` carry no auth and no path
+    constraints, and no constrained `api_call` was added — business APIs go through MCP;
+  - **Nested delegation**: unchanged; a delegate cannot `Task`;
+  - **Importing private memory into the main memory**: copy the files when you need it —
+    adding it would introduce an irreversible merge semantic;
+  - **Cross-workspace memory**: private memory is bound to a workspace, so one definition
+    has one memory per workspace.
+</Warning>
+
+<Card title="Back to" icon="arrow-left" href="/en/features/subagents">
+  The dispatch quartet, four-layer discovery and activity replay.
+</Card>

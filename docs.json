@@ -39,10 +39,6 @@
             {
               "label": "GitHub",
               "href": "https://github.com/xqb0407/kova"
-            },
-            {
-              "label": "EN",
-              "href": "/en"
             }
           ],
           "primary": {
@@ -86,6 +82,10 @@
                 {
                   "label": "子代理",
                   "href": "/features/subagents"
+                },
+                {
+                  "label": "能力模型",
+                  "href": "/features/subagent-capabilities"
                 }
               ]
             },
@@ -172,7 +172,8 @@
                   "features/prompt-cache",
                   "features/modes",
                   "features/goal-mode",
-                  "features/subagents"
+                  "features/subagents",
+                  "features/subagent-capabilities"
                 ]
               },
               {
@@ -234,10 +235,6 @@
             {
               "label": "GitHub",
               "href": "https://github.com/xqb0407/kova"
-            },
-            {
-              "label": "中文",
-              "href": "/"
             }
           ],
           "primary": {
@@ -281,6 +278,10 @@
                 {
                   "label": "Subagents",
                   "href": "/en/features/subagents"
+                },
+                {
+                  "label": "Capability model",
+                  "href": "/en/features/subagent-capabilities"
                 }
               ]
             },
@@ -367,7 +368,8 @@
                   "en/features/prompt-cache",
                   "en/features/modes",
                   "en/features/goal-mode",
-                  "en/features/subagents"
+                  "en/features/subagents",
+                  "en/features/subagent-capabilities"
                 ]
               },
               {
