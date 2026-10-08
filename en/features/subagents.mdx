@@ -1,29 +1,102 @@
 ---
-title: "Subagent design"
-description: "The Task quartet, three-layer discovery, isolated contexts with their own token ledger, and persistent activity replay."
+title: "Subagents"
+description: "The Task quartet, four-layer discovery, agent-authored definitions, isolated contexts with their own token ledger, and persistent activity replay."
 ---
 
 Subagents let the agent split large work and process it in parallel rather than grinding
 through it serially in one context. Each subagent is an **independent Agent instance**:
 own context, own toolset, own ledger.
 
-## The four management tools
+<Note>
+  What a subagent can reach is decided by five capability dimensions (tools, skills, MCP,
+  knowledge sources, memory), declared one by one. See
+  [Subagent capabilities](/en/features/subagent-capabilities).
+</Note>
+
+## The four dispatch tools
 
 <Steps>
-  <Step title="Task">Dispatch a subagent with its own context and toolset.</Step>
+  <Step title="Task">Dispatch a subagent with its own context and toolset, and return immediately.</Step>
   <Step title="TaskWait">Wait for a subagent to finish and collect its result.</Step>
   <Step title="TaskList">List live subagents and their status.</Step>
   <Step title="TaskStop">Terminate a running subagent.</Step>
 </Steps>
 
-## Three-layer discovery
+The parallel rule is plain: **several Task calls in one assistant message run in
+parallel**. Mix a Task with any other tool in the same message and they degrade to one
+at a time. The concurrency cap is 8. And you never have to wait idle — keep working or
+keep talking; reports land back in the conversation when they finish.
 
-Definitions live in `~/.kova/` and are managed under Settings → Subagents. Discovery has
-three layers:
+## The main agent can author definitions itself
 
-1. **Built-in definitions** — shipped with the app;
-2. **User-defined** — the ones you write in settings;
-3. **Plugin-provided** — contributed through a plugin's manifest.
+Beyond the settings page, the main agent holds three management tools:
+
+<Steps>
+  <Step title="subagents_list">List every definition (tools, turns, model, switch, source file, per-layer storage dirs).</Step>
+  <Step title="subagents_save">Create or update a system-level / workspace-level definition.</Step>
+  <Step title="subagents_delete">Delete a custom definition.</Step>
+</Steps>
+
+They share **the exact same semantics** as the settings page: schema validation, layer
+directory resolution, rejecting names that collide with a built-in, cross-layer
+duplicate checks, cleaning up the old file on rename. A definition the agent writes is
+indistinguishable from one you wrote by hand.
+
+This group hangs beside the Task group and is **not in the base toolset**: a subagent
+picking tools from its definition structurally cannot reach them. A delegate can neither
+delegate further nor edit definitions — a second gate behind the grantable-tool
+allowlist.
+
+After a save the protocol layer regroups tools, so it takes effect on **the next turn**,
+with no app restart.
+
+## Four-layer discovery
+
+A definition is a plain YAML file, loaded across four layers:
+
+<Columns cols={2}>
+  <Card title="Built-in" icon="box">
+    Shipped with the app: Explorer, Code-reviewer, Test-runner, Fixer.
+    Read-only in settings — switchable and copyable to system level, never written back.
+  </Card>
+  <Card title="System" icon="gear">
+    `subagents/*.yml` in the app data directory; active everywhere.
+    This is where your own personal definitions live.
+  </Card>
+  <Card title="Workspace" icon="folder">
+    `<workspace>/.kova/subagents/*.yml`, travels with git, active for that workspace only.
+  </Card>
+  <Card title="Plugin" icon="puzzle-piece">
+    Contributed by the `subagents` directory in a plugin manifest; the switch and model
+    override are namespaced by pluginId.
+  </Card>
+</Columns>
+
+On a name clash the later layer shadows the earlier one. A broken file degrades into a
+single diagnostic — it never takes down the rest of the list, and certainly not a turn.
+
+**The switch and the model override never go into the definition file.** Definition files
+land in git and built-ins are read-only constants, so "is it enabled" and "which model"
+are this machine's business, stored as one package in SQLite. The model override is
+therefore the **only** tunable on a built-in definition. Precedence:
+
+`Task argument` > `local override` > `definition's own` > `session model`
+
+## What it can reach is what the definition says
+
+A subagent definition may declare five orthogonal dimensions. **Undeclared means
+unreachable** — what you did not write shows up neither in its toolset nor in its prompt.
+Details and the trade-offs behind each:
+
+| Dimension | Declares | When undeclared |
+| --- | --- | --- |
+| `tools` | Base tool allowlist (coding / network / `use_skill`, …) | Only the minimal set a definition requires |
+| `skills` | Skill allowlist (by name) | No skill catalog injected; `use_skill` unavailable |
+| `mcp` | Which MCP servers it may reach | The gateway is not mounted at all |
+| `knowledge` | Declared knowledge sources (name + workspace-relative glob) | Not even `kb_search` exists |
+| `memory` | Memory mode: none / private / shared | Every delegation starts cold |
+
+See [Subagent capabilities](/en/features/subagent-capabilities).
 
 ## Why the activity trail must be persisted
 
@@ -104,9 +177,14 @@ with a status guard that blocks double-settlement of the same amount.
   - **Nothing written into the parent transcript**: the parent transcript is read whole,
     and writing into it would pollute it;
   - **No new storage engine**: the existing JSONL pipeline and its write discipline are
-    reused.
+    reused;
+  - **No nested delegation**: a subagent gets neither the Task group nor the subagent
+    management group, so it cannot delegate any further;
+  - **Subagents do not decide the main memory**: they may write straight into the shared
+    workspace memory by choosing that mode, but there is no "import this subagent's
+    private memory into the main memory" action.
 </Warning>
 
-<Card title="Next" icon="arrow-right" href="/en/features/prompt-queue">
-  Another underrated design: prompt queue v2.
+<Card title="Next" icon="arrow-right" href="/en/features/subagent-capabilities">
+  How a definition reaches a knowledge base, skills and memory — the capability model.
 </Card>
