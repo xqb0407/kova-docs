@@ -1,0 +1,215 @@
+---
+title: "MCP"
+description: "Connect Model Context Protocol servers so the agent can use GitHub, databases, and internal services — without touching the tool table or sacrificing prompt caching."
+---
+
+The MCP (Model Context Protocol) ecosystem already has a lot of ready-made
+capability: GitHub, databases, browsers, all kinds of SaaS APIs. Kova can connect
+to them and let the agent use the tools those servers provide.
+
+This page covers how connections work, how to write the configuration, and the
+tradeoffs you should know about.
+
+## Why MCP tools are not registered directly
+
+The industry has two approaches. Kova takes the second one, and the reason is
+**prompt caching**.
+
+<CardGroup cols={2}>
+  <Card title="Full registration (not used)" icon="xmark">
+    Register every MCP tool as its own tool for the model. Best ergonomics, but a
+    single server can bring 10k+ tokens of schema, and adding or removing a server
+    rewrites the tool table.
+  </Card>
+  <Card title="Proxy gateway (what Kova does)" icon="check">
+    Register **one** gateway tool of roughly 200 tokens. The model calls `search` to
+    discover, then `call` to invoke. Metadata caching keeps search working even
+    while disconnected.
+  </Card>
+</CardGroup>
+
+The reason is firm: Kova's system prompt and tool schemas stay **byte-identical
+across sessions**, which is what lets OpenAI prefix caching and Anthropic tool
+blocks hit. MCP servers are runtime configuration — dynamic registration would
+destroy that guarantee.
+
+So the model sees one tool called `mcp` with four actions:
+
+| Action | What it does |
+| --- | --- |
+| `search` | Find tools by keyword across servers; returns fully-qualified names |
+| `describe` | Show the input schema of one tool |
+| `call` | Invoke it |
+| `status` | Connection state and tool counts per server |
+
+The internal name format is `mcp__<server>__<tool>`. `search` returns those names;
+`describe` and `call` accept them.
+
+**The convention is search first, then call.** This is stated in the system prompt
+and the model follows it.
+
+## Configuration: three layers, merged
+
+MCP server config lives in three layers, lowest to highest:
+
+| Layer | Path | Purpose |
+| --- | --- | --- |
+| System | `~/.kova/mcp.json` | Machine-wide, full field set |
+| Workspace standard | `<workspace>/.mcp.json` | **Ecosystem standard format**; committable, reusable by Claude Code and friends |
+| Workspace override | `<workspace>/.kova/mcp.json` | Kova-specific fields, same family as `.kova/subagents` |
+
+Merged by server id — **a higher layer replaces the whole entry** for a matching id.
+Same id with a different transport counts as a different definition.
+
+<Note>
+  The workspace standard layer uses `.mcp.json` (the ecosystem format) but only
+  honours `command` / `args` / `env` / `url` / `headers` / `type`. Kova-specific
+  fields placed there are **ignored** — put them in `.kova/mcp.json` to take effect.
+</Note>
+
+**Enable/disable toggles never go into files.** They live in SQLite
+(`mcp.disabled.<layer>.<id>`), because a personal switch has no business in a file
+you commit and share. Same approach as subagents.
+
+### Writing a config
+
+```jsonc
+{
+  "mcpServers": {
+    "github": {
+      // Option 1: stdio (spawns a local child process)
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "ghp_..." },
+
+      // Option 2: http
+      // "url": "http://192.168.1.20:8080/mcp",
+      // "headers": { "Authorization": "Bearer ..." },
+      "type": "stdio",          // optional: command implies stdio, url implies http
+
+      // ---- Kova-specific below; ignored in a standard .mcp.json ----
+      "disabled": false,        // for hand-editing only; the UI toggle uses SQLite
+      "lifecycle": "lazy",      // lazy (default) | eager | keep-alive
+      "idleTimeout": 600000,    // ms, default 10 minutes
+      "approveTools": ["get_*", "list_*"],  // tools matching these globs skip approval
+      "description": "GitHub API"
+    }
+  },
+  "settings": {
+    "approveTools": true,       // force approval globally
+    "outputGuard": true
+  }
+}
+```
+
+<Warning>
+  **Changing the URL drops the auth fields.** Suspected credential entries in
+  `headers` / `env` are bound to the URL — so that sharing a config cannot point the
+  server at someone else's address while carrying your credentials along.
+</Warning>
+
+### Limits
+
+After merging: ≤ 32 servers across system + workspace, ≤ 64 tools per server, ≤ 16
+concurrent connections. Validation is tight: ids allow only letters, digits,
+underscore and hyphen; stdio and http fields are mutually exclusive; `command`
+may not contain `..`; urls must be absolute.
+
+## Approval
+
+**Every MCP `call` goes through the existing per-tool approval flow** — the same
+one used for writing files and running bash. No separate mechanism is invented. When
+approval is denied, the model receives a blocked tool result, consistent with every
+other denied tool.
+
+Two routes skip approval:
+
+- The server's `approveTools` glob matches the tool name
+- `settings.approveTools` is explicitly `false` (unset by default, so everything asks)
+
+`search` / `describe` / `status` **never trigger approval** — they only read the local
+cache and connection state.
+
+## Output guard
+
+MCP servers can return a lot. Kova's approach matches `read` and `grep`:
+**bounded, but resumable**.
+
+| Kind | Truncation | How to get the rest |
+| --- | --- | --- |
+| Text | 8KB or 1000 lines | Overflow written to a temp file; the notice includes the **full path** so the model can `read` it back in pages |
+| Structured | Summary above 16KB | Content block count + type and byte preview of the first 20 blocks + small fields up to ≤4KB |
+
+Nothing is lost — it is delivered differently. The model gets a bounded result plus
+a pointer it can follow.
+
+## Search still works while disconnected
+
+The metadata cache (`mcp-cache.ts`) keeps `search` and `describe` available even when
+a server cannot be reached:
+
+- Entries are keyed by **configHash** (covering command/args/env/url/headers), so a
+  config change invalidates them automatically
+- Fully refreshed after every successful handshake; default TTL 7 days, or the
+  server's own `ttlMs` when declared
+- On a cache hit the old value is returned immediately while a refresh runs in the
+  background — **the foreground never waits on the network**
+
+## Connection management
+
+Connections are a **process-wide singleton** with a pool shared across sessions (lazy
+connect plus idle disconnect). They are not isolated per session — MCP servers have
+no notion of a session.
+
+A server is in one of four states: `idle` / `connecting` / `ready` / `failed` (with
+backoff). Each row in Settings shows a state dot and a "Test connection" button that
+forces a fresh handshake.
+
+Configuration changes **hot-reload**: the manager diffs the pool against the new
+config, disconnecting changed or disabled servers and releasing deleted ones. The
+system prompt and tool table need **no re-injection** — under proxy mode the tool
+table never changed in the first place.
+
+## Settings page
+
+Settings → MCP. The skeleton matches the subagents page: two layer groups (system /
+workspace), and per row a transport icon, name, enable toggle, status badge
+(`ready · N tools` / `connecting` / `failed` with the reason), plus a row menu for
+testing the connection and deleting.
+
+Plain HTTP pointing at a non-loopback host shows a warning bar.
+
+## Known tradeoffs
+
+<CardGroup cols={2}>
+  <Card title="args travel as a JSON string" icon="code">
+    `call` parameters are a JSON string rather than an object, because some models
+    are unstable with nested union schemas. If testing shows mainstream models handle
+    objects fine, this will be relaxed to accept both.
+  </Card>
+  <Card title="No regex or paging in search" icon="magnifying-glass">
+    Search is field-weighted matching (name 12 / server 8 / description 5; exact >
+    prefix > substring, with a bonus for full-name hits), returning 12 by default and
+    40 at most. Regex and paging come later.
+  </Card>
+  <Card title="Orphan processes on Windows" icon="computer">
+    stdio servers are spawned directly by the sidecar. The normal path kills them,
+    but an abnormal exit (especially on Windows) can leave a child behind; cleanup
+    walks the process tree. This still needs validation under real usage.
+  </Card>
+  <Card title="No OAuth yet" icon="lock">
+    Authentication is currently static, via headers or env in the config. OAuth,
+    resources, sampling, and elicitation are on the way at a later pace.
+  </Card>
+</CardGroup>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Modes and permissions" icon="shield" href="/en/features/modes">
+    How MCP approval relates to the permission levels.
+  </Card>
+  <Card title="Agent engine" icon="cpu" href="/en/features/agent-engine">
+    The built-in tool list and where the proxy gateway tool fits.
+  </Card>
+</CardGroup>

@@ -1,105 +1,152 @@
 ---
-title: "Prompt queue v2"
-description: "The QueueEngine state machine, snapshot persistence, three idempotent sync rules, and the four actions."
+title: "Prompt queue"
+description: "Queue, merge into the current turn, send now — and why queue state is a full snapshot rather than a delta."
 ---
 
-The prompt queue lets you line up follow-up requests while the agent is still working.
-v1 accumulated a list of integration bugs; v2 cleared them in one pass. This page
-describes v2's design, because it is a good illustration of how Kova handles frontend
-state.
+The prompt queue lets you type follow-up instructions while the agent is still
+working.
 
-## What was wrong with v1
+There are only four actions on the queue bar, and that is deliberate. This page covers
+what each one does, plus the one design decision behind them: **queue state is a full
+snapshot, not a delta**. It happens to be a good illustration of how Kova handles
+frontend state in general.
 
-The bugs exposed during integration mostly pointed at the same roots: **queue state was
-not persisted, the source of truth was scattered, and the frontend performed multi-path
-surgery on the message array**.
+## Isolated per thread
 
-| Symptom | Root cause |
-| --- | --- |
-| Queued messages vanished after refresh/restart; the queue bar became a ghost | The queue was purely in-memory — on both the sidecar and the frontend mirror |
-| Message-array surgery needed four paths (remove / backfill / restore / suppress) plus restore races, duplicate-appends, and ordering bugs | Optimistic messages lived directly in the Chat array, fighting the framework's duplicate-entry behaviour |
-| Any side stream finishing knocked the session status back to ready, flickering buttons | The framework's status is a single slot, and side streams each manage their own lifecycle |
-| After one failed turn, every subsequent queued item hit the same error | No circuit breaker |
+<Note>
+  Queues are **isolated per thread**: one FIFO per `threadId`, and one serial chain per
+  thread. Turns in different threads run in parallel and never block each other.
+</Note>
 
-## The v2 answer: snapshots, not increments
+That isolation fixes the messiest class of early problems: when a new prompt arrived
+while the previous turn was still running and went straight to `agent.prompt()`, it
+hit the `Agent is already processing` guard. Now it enters that thread's FIFO and is
+executed in order by that thread's serial chain.
 
-<Columns cols={2}>
-  <Column title="Sidecar side">
-    The queue was rewritten as a pure state machine, `QueueEngine` — queue, auto-increment
-    ids, and dispatch collapse into one I/O-free class. **On every change** it appends a
-    full snapshot to the session transcript (`queue_state`); after a restart, a thread
-    switch, or tree navigation it recovers from the last one. It also broadcasts the full
-    snapshot to the thread, and the frontend adopts "last snapshot wins".
-  </Column>
-  <Column title="Frontend side">
-    The store became a **snapshot mirror**: full replacement, no incremental
-    reconciliation. The message-array rules collapsed from "four paths plus race
-    compensations" into **three idempotent rules**, applied once on mount from the
-    current snapshot — that alone completes reconciliation.
-  </Column>
-</Columns>
+So "the queue" is not one global box — it is **one queue per conversation**. Queueing
+in session A never blocks session B.
 
-The reasoning for full snapshots over increments is in the decision log: queues are
-typically ≤5 items, full replacement is the simplest thing with zero reconciliation
-logic, and the broadcast rate is low.
-
-## The three sync rules
-
-Everything the frontend does to the message array reduces to three idempotent rules:
-
-| Rule | Trigger | Action |
-| --- | --- | --- |
-| R1 queued | The item is in the snapshot | The message lives only in the queue bar (removed from the Chat array, preventing duplicates) |
-| R2 dispatched | The item vanished from the snapshot (the turn truly began) | The message is backfilled at the end of the list; after a refresh there is no original bubble, so one is rebuilt from the snapshot text |
-| R3 steered | Merged into the current turn | Keep "backfill when the host turn wraps" — backfilling immediately inside the host turn's write window triggers duplicate growth and reordering |
-
-The deleted legacy paths: restore-race compensation, cancelled markers, reconciliation
-direction branches — all replaced by "snapshot state + three rules".
-
-## Four actions
-
-The queue bar has exactly four operations, and nothing more:
+## The four actions
 
 <CodeGroup>
-```text Queue (default)
-Enter sends into the queue; dispatch happens in order after the current turn.
-
-Promote
-Jump the line — this message dispatches immediately.
+```text Queue
+Enter sends it to the queue; it is dispatched in order once the current turn ends.
 
 Steer
-Do not interrupt the current turn, but hand this message to the running agent.
+Does not interrupt the running turn, but hands the message to the agent already working.
+
+Promote
+Jumps the queue and dispatches immediately.
 
 Cancel
-Remove it from the queue.
+Removes it from the queue.
 ```
 </CodeGroup>
 
-Edit, pause/resume, and the circuit breaker were **deliberately removed** in the
-refactor: a dispatching item has already left the snapshot, so there is no locked state
-to render; failed items terminate with the stream and backfill as ordinary bubbles, and
-resending is your call rather than an automatic pause gate.
+Editing, pause/resume, and failure circuit-breaking were **removed on purpose** during
+the refactor — they are not oversights:
+
+- **No pause**: a dispatched item has already left the snapshot, so there is no locked
+  state to speak of; when the previous turn wraps up the chain automatically takes the
+  head of the queue and runs
+- **No circuit breaker**: a failed item is reflowed into a bubble when the stream ends,
+  and whether to retry is your call — not an automatic gate deciding that the next few
+  should stop too
+
+## Where the earlier problems came from
+
+<Columns cols={2}>
+  <Column title="Symptoms and root cause">
+    Queue state was not persisted, the source of truth was scattered, and the frontend
+    performed multiple surgeries on the message array. After a refresh or restart,
+    queued messages vanished and the queue bar turned into a ghost; the message array
+    needed extract/refill/restore/suppress paths, plus recovery races, duplicate
+    reconciliation appends, and ordering churn; any side stream finishing reset the
+    session status to ready, making the button flicker.
+  </Column>
+  <Column title="The answer now">
+    The queue was rewritten as a pure state machine, `QueueEngine` — queue, auto-increment
+    id, and dispatch settlement all live in one class with no I/O. **Every change**
+    appends a full-snapshot line to the session transcript, so it can be restored after a
+    restart, a thread switch, or tree navigation; the same full snapshot is broadcast to
+    the thread, where the frontend applies "last snapshot wins".
+  </Column>
+</Columns>
+
+<Note>
+  The reason for full snapshots over deltas is plain: a queue rarely exceeds five items,
+  so full is the simplest option, has no reconciliation logic, and broadcasts rarely.
+</Note>
+
+### How a snapshot travels
+
+- **Persisted**: every change appends a `queue_state` full-snapshot line to the session
+  JSONL
+- **Restored**: after a sidecar restart it is replayed via `get_queue_state`, and it
+  **no longer auto-pauses**
+- **Broadcast**: every change sends `data-queue-state` to that thread via
+  `sendEventChunk`
+- **Conflict**: the frontend applies "last snapshot wins". Snapshots are dropped silently
+  when the thread has no active request — idle-state changes are initiated by the
+  frontend's own invoke, so the frontend updates itself from the reply
+
+<Note>
+  The "same id updated in place across phases" incremental chunk shape has been
+  **removed entirely**. Enqueue, position, and dispatch are all carried by full
+  snapshots; there are no per-item lifecycle chunks.
+</Note>
+
+## Three frontend sync rules
+
+Every operation the frontend performs on the message array collapses to three
+idempotent rules:
+
+| Rule | Trigger | What it does |
+| --- | --- | --- |
+| R1 queued | The snapshot contains it | The message lives only in the queue bar (extracted from the Chat array to prevent duplicates) |
+| R2 dequeued | It disappears from the snapshot (the turn actually starts) | The message is appended to the end of the list; if there is no original bubble after a refresh, it is rebuilt from the snapshot text |
+| R3 steered | Merged into the current turn | Keeps "refill on host-turn wrap-up" — refilling immediately would grow duplicates and reorder messages inside the host turn's write window |
+
+Retired paths — restore race compensation, cancelled flags, direction branching in
+reconciliation — are all replaced by "snapshot state plus three rules".
+
+## Stable ids
+
+Items carry a **persisted auto-increment id** that never repeats across restarts, and
+both dispatch and cancellation address items by that id.
+
+This is not a detail: addressing by array index meant that after a restart an index
+mismatch would cancel the wrong item.
 
 ## Attachments survive
 
 Early snapshots persisted text only, so bubbles rebuilt after a refresh lost their
-attachments. Fixed: snapshot entries now carry image attachments (protocol shape
-`{ name, mimeType, data | path }`, same as prompt frames), so refresh/restart recovery,
-pump redispatch, and queue-bar thumbnails all keep their images.
+attachments. That was fixed — snapshot entries now carry image attachments (protocol
+shape `{ name, mimeType, data | path }`, identical to a prompt frame), so restore after
+a refresh or restart, relay-pump re-dispatch, and queue bar thumbnails all keep the
+image.
 
 <Note>
-  A bug worth remembering: the sidecar originally detected the shape by a
-  `type: "image"` field that **the frontend never sent**, so it silently dropped every
-  image — no historical `queue_state` row ever carried one. The lesson: align protocol
-  shapes with what is already in use, do not invent a new field.
+  There is a trap worth remembering here: the sidecar originally inferred the shape from
+  a `type: "image"` field **the frontend never sent**, so it silently dropped every
+  image — meaning no historical `queue_state` line carries an attachment, and nothing
+  errored. The lesson: align protocol shapes with the ones actually in use rather than
+  inventing a new field.
 </Note>
 
-## The known edge
+## Known boundary
 
-Refresh between "sent" and "confirmed": the registry lives in frontend memory and is
-cleared by the refresh, so the item is rebuilt from the snapshot (attachments included
-now). Acceptable.
+Refreshing between "sent" and "confirmed": the registry lives in frontend memory, so a
+refresh clears it. The item is then rebuilt from the snapshot (attachments included),
+which is acceptable.
 
-<Card title="Next" icon="arrow-right" href="/en/features/modes">
-  One app, five things called "mode". Do not mix them.
-</Card>
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Modes overview" icon="sliders" href="/en/features/modes">
+    Five different "modes" in one app — do not conflate them.
+  </Card>
+  <Card title="Conversation workspace" icon="message" href="/en/features/conversation">
+    Where the queue bar sits in the conversation stream.
+  </Card>
+</CardGroup>

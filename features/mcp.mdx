@@ -1,0 +1,187 @@
+---
+title: "MCP"
+description: "接入 Model Context Protocol 服务器，让 agent 用上 GitHub、数据库、内部服务等外部能力——而不动工具表、不牺牲提示词缓存。"
+---
+
+MCP（Model Context Protocol）生态里已经有大量现成能力：GitHub、数据库、浏览器、各类
+SaaS API。扣瓦可以接入它们，agent 直接用这些服务器提供的工具。
+
+这一页讲清楚它怎么接、配置怎么写、以及有哪些你需要知道的取舍。
+
+## 为什么不把 MCP 工具直接注册进工具表
+
+业界有两种接法，扣瓦选了第二种，原因是**提示词缓存**。
+
+<CardGroup cols={2}>
+  <Card title="全量注册（未采用）" icon="xmark">
+    每个 MCP 工具作为一个独立工具注册给模型。模型用起来最顺手，但一个服务器就能带来
+    10k+ token 的 schema，而且服务器一增删就改写工具表。
+  </Card>
+  <Card title="代理网关（本项目采用）" icon="check">
+    只注册**一个**约 200 token 的网关工具。模型先 `search` 发现、再 `call` 调用，
+    断连状态下也能靠元数据缓存搜索。
+  </Card>
+</CardGroup>
+
+理由很硬：扣瓦的系统提示词与工具 schema 在会话间**字节级不变**，这是 OpenAI 前缀增量
+与 Anthropic tools 块能命中缓存的前提（见[提示词缓存](/features/prompt-cache)）。
+MCP 服务器是你运行时配置的，动态注册会把这个前提打爆。
+
+所以模型看到的是一个叫 `mcp` 的工具，四个动作：
+
+| 动作 | 作用 |
+| --- | --- |
+| `search` | 按关键词搜服务器提供的工具，返回全名 |
+| `describe` | 看某个工具的入参 schema |
+| `call` | 调用它 |
+| `status` | 各服务器的连接状态与工具数 |
+
+工具的内部全名是 `mcp__<服务器>__<工具>`，`search` 返回的就是全名，`describe` 和
+`call` 接受全名。
+
+**约定是先 search 再 call**。这条写进了系统提示词，模型照做。
+
+## 配置：三层合并
+
+MCP 服务器的配置分三层，低到高：
+
+| 层 | 路径 | 用途 |
+| --- | --- | --- |
+| 系统层 | `~/.kova/mcp.json` | 机器级，完整字段 |
+| 工作区标准层 | `<工作区>/.mcp.json` | **生态标准格式**，随仓库共享，Claude Code 等工具可直接复用 |
+| 工作区覆盖层 | `<工作区>/.kova/mcp.json` | 扣瓦专属字段，与 `.kova/subagents` 同族 |
+
+按服务器 id 合并，**高层整条覆盖低层同名 id**。同一 id 但传输方式不同，视为不同定义。
+
+<Note>
+  工作区标准层用 `.mcp.json`（生态标准），但只认 `command` / `args` / `env` / `url` /
+  `headers` / `type` 这几个字段——扣瓦专属字段写在这里会被**忽略**，要生效得写到
+  `.kova/mcp.json`。
+</Note>
+
+**启停开关不入文件**，落 SQLite（键 `mcp.disabled.<层>.<id>`）。个人开关不该写进
+随仓库共享的文件里——和子代理的处理方式一致。
+
+### 写一个配置
+
+```jsonc
+{
+  "mcpServers": {
+    "github": {
+      // 方式一：stdio（本地起一个子进程）
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "ghp_..." },
+
+      // 方式二：http
+      // "url": "http://192.168.1.20:8080/mcp",
+      // "headers": { "Authorization": "Bearer ..." },
+      "type": "stdio",          // 可省略：有 command 推定 stdio，有 url 推定 http
+
+      // ---- 以下是扣瓦层专属，标准 .mcp.json 里写了会被忽略 ----
+      "disabled": false,        // 仅供手工编辑；界面开关走 SQLite
+      "lifecycle": "lazy",      // lazy（默认）| eager | keep-alive
+      "idleTimeout": 600000,    // 毫秒，默认 10 分钟
+      "approveTools": ["get_*", "list_*"],  // 命中这些 glob 的工具免审批
+      "description": "GitHub API"
+    }
+  },
+  "settings": {
+    "approveTools": true,       // 全局强制审批
+    "outputGuard": true
+  }
+}
+```
+
+<Warning>
+  **改 URL 会丢掉认证字段。** headers / env 里疑似凭证的项与 URL 绑定——防止你把配置
+  共享出去时，别人把服务器指向自己的地址却带走你的凭证。
+</Warning>
+
+### 上限
+
+合并后系统 + 工作区共 ≤ 32 个服务器，每服务器 ≤ 64 个工具，同时活跃连接 ≤ 16。
+校验规则收得比较紧：id 只允许字母数字下划线连字符；stdio 与 http 字段互斥；
+`command` 不含 `..`；url 必须绝对。
+
+## 审批
+
+**MCP 的 `call` 一律走现有的逐工具审批回路**（和写文件、跑 bash 的是同一条路），
+不另造机制。审批被拒时，模型收到的是 blocked 工具结果，和其他工具被拒的语义一致。
+
+有两条免审批的路：
+
+- 服务器的 `approveTools` 配了 glob 且命中该工具名
+- `settings.approveTools` 显式设为 `false`（默认不设，即默认都要审）
+
+`search` / `describe` / `status` **不触发审批**——它们只读本地缓存和连接状态。
+
+## 输出防护
+
+MCP 服务器返回的东西可能很大。扣瓦的做法和 `read` / `grep` 一致：**有界 + 可续取**。
+
+| 类型 | 截断 | 续取方式 |
+| --- | --- | --- |
+| 文本 | 8KB 或 1000 行 | 溢出部分写到临时文件，通知里附**完整路径**，模型可以 `read` 分页取回 |
+| 结构化 | 超过 16KB 出摘要 | 内容块计数 + 前 20 块的类型与字节预览 + 保留 ≤4KB 的小字段 |
+
+这不是丢数据，是换个方式给——模型拿到的是一个有界的结果加上一个能续读的指针。
+
+## 断连了还能搜
+
+元数据缓存（`mcp-cache.ts`）让 `search` / `describe` 在服务器连不上时仍然可用：
+
+- 条目按 **configHash** 键控（覆盖 command/args/env/url/headers），所以换配置自动失效
+- 每次成功握手后全量更新；TTL 默认 7 天，服务器自己声明 `ttlMs` 则优先
+- 读命中缓存时先返回旧值、后台异步刷新——**前台不等网络**
+
+## 连接管理
+
+连接是**进程内全局单例**，跨会话共享连接池（懒连接 + 空闲断开）。不按会话隔离——
+MCP 服务器本身没有会话语义。
+
+服务器状态有四态：`idle` / `connecting` / `ready` / `failed`（含退避 `backoff`）。
+设置页里每行有状态点和一个「测试连接」按钮（强制重新握手）。
+
+改配置会**热重载**：按新配置 diff 连接池，变更或禁用就断连、删除就释放。
+系统提示词和工具表**不需要重新注入**——代理模式下工具表从来没变过。
+
+## 设置页
+
+设置 → MCP。骨架和子代理页一致：双层分组（系统 / 工作区），每行有传输方式图标、
+名称、启停开关、状态徽章（`ready · N 工具` / `connecting` / `failed` + 原因），
+行菜单里有测试连接与删除。
+
+指向非 loopback 的明文 HTTP 会显示警告条。
+
+## 已知取舍
+
+<CardGroup cols={2}>
+  <Card title="args 走 JSON 字符串" icon="code">
+    `call` 的参数是 JSON 字符串而不是对象。原因是部分模型对嵌套 union schema
+    不稳，字符串形态更鲁棒。如果实测主流模型用对象没问题，会放宽成两种都收。
+  </Card>
+  <Card title="search 没有正则与分页" icon="magnifying-glass">
+    目前是字段加权匹配（名 12 / 服务器 8 / 描述 5，完整匹配 > 前缀 > 包含，
+    命中全名额外加权），默认返回 12 条、上限 40。正则与分页在后续迭代。
+  </Card>
+  <Card title="Windows 孤儿进程" icon="computer">
+    stdio 服务器是 sidecar 直接 spawn 的。正常路径会 kill，异常退出（尤其 Windows）
+    可能残留子进程，收尾按进程树清理。这条还需要真实使用验证。
+  </Card>
+  <Card title="OAuth 尚未支持" icon="lock">
+    目前认证靠配置里的 headers / env 静态提供。OAuth、资源（resources）、采样、
+    elicitation 按后续节奏推进。
+  </Card>
+</CardGroup>
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card title="权限档位" icon="shield" href="/features/modes">
+    MCP 审批走的是同一条逐工具审批回路，与权限档位的关系在这里。
+  </Card>
+  <Card title="Agent 引擎" icon="cpu" href="/features/agent-engine">
+    内置工具清单与代理网关工具的关系。
+  </Card>
+</CardGroup>

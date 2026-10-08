@@ -1,0 +1,151 @@
+---
+title: "Model services"
+description: "Add custom endpoints, import configuration from other tools, and override model attributes — which decides which models Kova can call and how their thinking levels map."
+---
+
+Kova ships with a set of built-in model services (from the `pi-ai` catalog, each with
+its own authentication method). On top of that you can:
+
+- **Add custom endpoints** — any OpenAI-compatible API
+- **Import from other tools** — services you have already configured in opencode,
+  Codex, ZCode, or cc-switch
+- **Override model attributes** — such as the thinking level mapping for a model
+
+## Built-in services
+
+The built-in catalog comes from `pi-ai`, and each service carries its own
+authentication method (environment variables, system credentials, and so on). You can
+see them all and their status under Settings → Model services.
+
+<Note>
+  The built-in catalog is a **read-only snapshot**. What you can do is add to it
+  (custom endpoints, imported models) and override attributes at **model granularity**.
+  Removing built-in services is not supported — they ship with `pi-ai` version bumps
+  and are not meant to be edited locally.
+</Note>
+
+## Custom endpoints
+
+Any OpenAI-compatible API works. Fill in three things: name, base URL, and API key,
+plus a list of model ids.
+
+<CardGroup cols={3}>
+  <Card title="Base URL" icon="link">
+    A full prefix, with the same semantics as the OpenAI SDK — the API implementation
+    appends its own endpoints after it. So fill in the path prefix, not a concrete
+    endpoint.
+  </Card>
+  <Card title="API key" icon="key">
+    Stored locally, never sent anywhere else. Leave blank to fall back to an
+    environment variable.
+  </Card>
+  <Card title="Model id" icon="list">
+    One per line. The id must match exactly what the server accepts.
+  </Card>
+</CardGroup>
+
+<Note>
+  Trailing slashes on the base URL are stripped, and repeated slashes are tolerated —
+  but the path segments themselves have to be right. `https://host/v1` is correct;
+  `https://host/v1/chat/completions` will break.
+</Note>
+
+Once added, the service appears in the model picker alongside the built-in ones, with
+no distinction between them.
+
+## Importing from other tools
+
+If you already have model services configured in another tool, import them instead of
+retyping.
+
+Settings → Model services has an import entry point. It scans the sources below and
+lists the candidates it finds, and you tick what you want before importing.
+
+| Source | Files read |
+| --- | --- |
+| **opencode** | `opencode.json` and `opencode.jsonc` under the XDG config directory (the latter overrides the former) |
+| **Codex** | `[model_providers.*]` in `~/.codex/config.toml`, with keys from `auth.json` |
+| **ZCode** | `~/.zcode/v2/provider_config.json`, falling back to `~/.zcode/cli/config.json` |
+| **cc-switch** | `~/.cc-switch/cc-switch.db` (SQLite) |
+
+<Note>
+  No path is hardcoded. opencode follows XDG (`$XDG_CONFIG_HOME` or `~/.config`, and
+  `%APPDATA%` on Windows); Codex and ZCode both live under the user's home directory.
+</Note>
+
+**A missing file for a source is not an error** — it simply yields no candidates. So a
+first scan reporting "found 0" is normal and does not mean anything is broken.
+
+### What happens on import
+
+The parsers are **pure functions** (text in, candidates out, no filesystem access), so
+a format change or a missing field shows up in tests immediately.
+
+All three parsers normalise to one shape, and the preview dialog only knows that shape
+— never each vendor's original format. That means **what you see in the preview is
+exactly what gets stored**.
+
+<Warning>
+  Import only reads configuration; it never moves or deletes anything in the source
+  tool. But it does read credentials (such as `GITHUB_TOKEN`, or credentials embedded
+  in a base URL) into Kova's local storage. Check which keys the preview proposes
+  before importing.
+</Warning>
+
+## Overriding model attributes
+
+On top of the catalog you can override attributes **per model**, for example:
+
+- Supplying a model's `thinkingLevelMap` — which decides which thinking levels it
+  supports (off / low / medium / high …)
+- Adjusting displayed properties such as the context window
+
+Overrides are **snapshot based** and can be reset to the built-in values in one click.
+
+<Note>
+  The thinking level map and the level picker in the UI are the same data. If a model
+  shows no thinking levels, it almost always lacks a `thinkingLevelMap` — add one
+  override and it appears.
+</Note>
+
+## Where credentials come from
+
+Built-in service credentials are handled by `pi-ai`'s credential store, which may mean
+environment variables or the system keychain. Custom endpoint keys live in local
+storage.
+
+Neither participates in the prompt cache key — but the **model id** does. Switching
+models changes the byte content of the tool table and system prompt, which misses the
+prefix cache once. Switching back to the same model hits it again.
+
+## Troubleshooting
+
+<CardGroup cols={2}>
+  <Card title="Model does not appear in the picker" icon="magnifying-glass">
+    For a custom service, check the base URL and model ids. For imported ones, look at
+    the scan results — a wrong path is the usual cause, especially when XDG directories
+    have been customised.
+  </Card>
+  <Card title="Auth error after picking a model" icon="key">
+    Check the API key for custom endpoints, or the credential source for built-in
+    services (usually an environment variable). 401/403 is almost always this layer.
+  </Card>
+  <Card title="No thinking levels available" icon="brain">
+    The model has no `thinkingLevelMap`. Add one in the overrides.
+  </Card>
+  <Card title="Import finds nothing" icon="file">
+    Confirm the source file actually exists (paths in the table above). Scanning is
+    silent about "file not found" — it only reports "found 0".
+  </Card>
+</CardGroup>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Prompt caching" icon="bolt" href="/en/features/prompt-cache">
+    Why switching models misses the cache once.
+  </Card>
+  <Card title="Remote access & mobile" icon="phone" href="/en/features/remote-mobile">
+    How endpoints and keys sync across devices.
+  </Card>
+</CardGroup>

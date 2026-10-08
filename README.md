@@ -22,8 +22,8 @@ site/
   logo.png           导航栏 logo（同上，自带底色，明暗主题通用）
   index.mdx          落地页（默认语言：简体中文，URL 为 /）
   quickstart.mdx     快速开始
-  features/          功能详解（12 页：对话 / Agent 引擎 / 循环视图 / 队列 / 缓存 /
-                     模式 / goal / 子代理 / 能力模型 / 插件 / 自动化 / 远程移动）
+  features/          功能详解（14 页：对话 / Agent 引擎 / 循环视图 / 模型服务 / 队列 / 缓存 /
+                     模式 / goal / 子代理 / 能力模型 / MCP / 插件 / 自动化 / 远程移动）
   developers/        开发者文档（3 页）
   reference/         路线图、开源许可
   en/                English（mirror of the root pages, URL 为 /en/...）

@@ -1,11 +1,19 @@
 ---
 title: "Automation & scheduled tasks"
-description: "Scheduled agent jobs: isolated sessions per run, catch-up on missed triggers, the unattended approval tier, and webhook notifications."
+description: "Scheduled agent jobs: isolated sessions per run, catch-up on missed triggers, the unattended permission tier and its fallback behaviour, and webhook notifications."
 ---
 
 Automations let the agent work on a schedule: a daily standup digest, a weekly cleanup, a
 check script on the hour. Scheduling runs on [croner](https://github.com/Hexagon/croner)
 with file locking and crash recovery.
+
+<Note>
+  The scheduler is vendored from `@amaster.ai/pi-task-scheduler` (Apache-2.0). A few
+  things were changed locally, one of which affects behaviour: the scheduler lifecycle
+  is owned by the sidecar itself, and the scheduler tools' scope was widened from
+  "the current session" to **app level** — automations are an app-level asset, visible
+  across sessions.
+</Note>
 
 ## Execution shape
 
@@ -29,6 +37,24 @@ A few deliberate decisions, all serving "do not interrupt what I am doing":
   </Card>
 </Columns>
 
+### What "its own session" means concretely
+
+Each run is a brand-new session identified as
+`automation:<taskId>:<historyEntryId>`. Consequently:
+
+- It takes the **create-session** branch rather than the resume branch (an explicit id
+  would be validated as an existing stream session and fail with "session not found")
+- The session is persisted with its transcript JSONL, so it is **fully reviewable later**
+- The real session id is recorded on the task's history entry, used for notification
+  deep links
+
+<Note>
+  **The prompt delivered is exactly the text you wrote — no prefix, no suffix.**
+  Unattended constraints are enforced by the permission tier, not by wrapping the prompt.
+  Wrapping would instead make the model work inside a frame it should not have to care
+  about.
+</Note>
+
 ## Three ways to create one
 
 1. **The form** — sidebar "Automations" → a full management view: task cards, a creation
@@ -38,42 +64,89 @@ A few deliberate decisions, all serving "do not interrupt what I am doing":
 3. **Task templates** — pick one from the template picker and adjust it.
 
 The editor's "instruction" row is followed by three composer-style capsules — **working
-directory, approval policy, and model** — and a new task's directory defaults to the
-current workspace.
+directory, permission tier, model**. A new task's directory defaults to the current
+workspace.
 
-## The unattended approval tier
+### Built-in templates
 
-When nobody can be asked, "ask" is not an option — the approval has to be a hard line.
-Scheduled tasks use their **own policy tier** (`toolPolicyProfile`), defaulted tightly to
-`read-only`:
+| Template | What it does |
+| --- | --- |
+| Daily briefing | Summarise today's schedule and to-do highlights each morning |
+| Weekly report draft | Review the week and draft a report on Friday evening |
+| Daily repo checkup | Run tests and a build, summarise failures (needs a working directory) |
+| Periodic information scan | Search a topic for recent developments every 6 hours |
+| Remind me later | A one-off task that runs a day from now |
+
+## The unattended permission tier
+
+When there is nobody to ask, "ask" is not an option — approval has to be a hard decision.
+
+Scheduled tasks use their **own** permission axis (`toolPolicyProfile`), three tiers,
+**defaulting to the tightest**:
+
+| Tier | Behaviour |
+| --- | --- |
+| `read-only` (default) | Every side-effecting tool that would need approval (`bash` / `write` / `edit` / subagent and skill management) is **denied outright** |
+| `workspace-write` | `write` / `edit` pass; `bash` and MCP (arbitrary execution / external side effects) are denied |
+| `full` | No restriction. Pick it only when the task genuinely needs it |
+
+### What happens when a tool is denied
+
+A denial does not deadlock the task or trigger endless retries. The scheduler tells the
+model:
+
+> Do not retry this tool; finish the task with allowed read-only operations.
+
+So a `read-only` daily report that hits `bash` will assemble the report by reading
+files instead, rather than retrying until it times out.
 
 <Warning>
-  Same name as the approval level, **different meaning**. "Auto in workspace" (the
-  approval level) decides **by path**. "Writable workspace" (the automation tier) decides
-  **by tool category, ignoring paths**: `write` / `edit` always pass, `bash` and MCP
-  always fail.
+  This shares its vocabulary with "permission levels" but means something else. This is
+  the single easiest thing to get wrong:
 
-  They even look identical — the automation editor deliberately reuses the ModePicker's
-  capsule shape — so judging by name will be wrong almost every time. See
+  - **"Auto within workspace"** (permission level) decides **by path** — it can tell
+    whether the target file is inside the workspace
+  - **"Writable workspace"** (automation tier) decides **by tool category, ignoring
+    paths** — `write`/`edit` always pass, `bash` and MCP are always denied
+
+  Both use the same capsule styling (the automation editor deliberately reuses
+  ModePicker's form), so judging by name will mislead you. See
   [Modes overview](/en/features/modes).
 </Warning>
 
 ## Webhooks and notifications
 
-Task events (fired, done, failed) can be pushed to any service — the `automation.*`
-events appear automatically in the webhook settings dropdown.
+Task events (fired, completed, failed) can be pushed to any service — the
+`automation.*` entries in the event registry show up automatically in the webhook
+settings dropdown.
 
-Completions can also raise a system notification. `maxConcurrentRuns` and `maxTasks` are
-local guardrails against a runaway scheduler.
+Completion can also go out as a system notification; clicking it lands in that run's
+session.
 
-## The management surface
+`maxConcurrentRuns` (default 2) and `maxTasks` (default 30) are locally added
+guardrails so the scheduler cannot run away.
+
+## Run history
+
+The "Run history" tab aggregates across tasks, groups by day, and is searchable. Queued
+triggers appear here too — so when a task "didn't run", the first place to look is the
+run history, not the task card.
+
+## Management UI
 
 <CardGroup cols={3}>
-  <Card title="Task card">"Run now / Edit / History" inline in the header; ⋯ keeps only Delete</Card>
-  <Card title="Two tabs">"Tasks | Runs" — runs aggregate across tasks, grouped by day, searchable</Card>
-  <Card title="Bulk management">Card selection / select-all, bulk enable / pause / delete (two-step delete confirmation)</Card>
+  <Card title="Task cards">Header row: run now / edit / history; ⋯ holds only delete</Card>
+  <Card title="Two tabs">"Tasks | Run history"; history aggregates across tasks, grouped by day, searchable</Card>
+  <Card title="Bulk management">Card checkbox / select-all, bulk enable / pause / delete (two-step delete confirmation)</Card>
 </CardGroup>
 
-<Card title="Next" icon="arrow-right" href="/en/features/remote-mobile">
-  While these run, you can watch from anywhere.
-</Card>
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Modes overview" icon="sliders" href="/en/features/modes">
+    The difference between the two "tier" axes and what each means.
+  </Card>
+  <Card title="Remote access & mobile" icon="phone" href="/en/features/remote-mobile">
+    Check on these jobs while you are away.
+  </Card>
+</CardGroup>

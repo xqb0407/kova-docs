@@ -1,0 +1,137 @@
+---
+title: "模型服务"
+description: "接入自定义端点、从其他工具导入配置、覆盖模型属性——决定扣瓦能调哪些模型，以及每个模型的思考档位怎么映射。"
+---
+
+扣瓦内置了一批模型服务（来自 `pi-ai` 的目录，带各自的认证方式）。除此之外你可以：
+
+- **加自定义端点** —— 任何 OpenAI 兼容的 API
+- **从其他工具导入** —— 已经在 opencode / Codex / ZCode / cc-switch 里配好的服务
+- **覆盖模型属性** —— 比如给某个模型补上思考档位映射
+
+## 内置服务
+
+内置目录由 `pi-ai` 提供，每个服务带自己的认证方式（环境变量、系统凭据等）。
+设置 → 模型服务里能看到全部内置服务与它们的状态。
+
+<Note>
+  内置目录是**只读快照**。你能做的是往里加（自定义端点、导入的模型），
+  以及在**模型粒度**上覆盖属性。删内置服务不在支持范围内——
+  它随 `pi-ai` 版本更新，不适合本地删改。
+</Note>
+
+## 自定义端点
+
+任何 OpenAI 兼容的 API 都能接。填三样东西：名称、Base URL、API Key，
+再加一个模型 id 列表。
+
+<CardGroup cols={3}>
+  <Card title="Base URL" icon="link">
+    完整前缀，语义与 OpenAI SDK 一致——具体端点（`/chat/completions` 之类）
+    由 API 实现在其后拼接，所以填到路径段即可，不要带尾部的具体端点。
+  </Card>
+  <Card title="API Key" icon="key">
+    存在本地，不外传。可以留空走环境变量。
+  </Card>
+  <Card title="模型 id" icon="list">
+    一行一个。id 必须与服务端实际接受的字符串一致。
+  </Card>
+</CardGroup>
+
+<Note>
+  Base URL 末尾的斜杠会被去掉，重复斜杠也容忍——但路径段本身不能错。
+  填 `https://host/v1` 是对的，填 `https://host/v1/chat/completions` 会拼坏。
+</Note>
+
+加完之后这个服务会和其他服务一起出现在模型选择器里，与内置服务没有区别。
+
+## 从其他工具导入
+
+如果你已经在别的工具里配好了模型服务，可以直接导入，不用手抄。
+
+设置 → 模型服务里有导入入口，会扫描这几个来源并把找到的候选列出来，
+你可以逐条勾选后导入。
+
+| 来源 | 读的文件 |
+| --- | --- |
+| **opencode** | XDG 配置目录下的 `opencode.json` 与 `opencode.jsonc`（后者覆盖前者） |
+| **Codex** | `~/.codex/config.toml` 里的 `[model_providers.*]`，密钥取自 `auth.json` |
+| **ZCode** | `~/.zcode/v2/provider_config.json`，回退 `~/.zcode/cli/config.json` |
+| **cc-switch** | `~/.cc-switch/cc-switch.db`（SQLite） |
+
+<Note>
+  路径不硬编码。opencode 走 XDG（`$XDG_CONFIG_HOME` 或 `~/.config`，
+  Windows 上是 `%APPDATA%`）；Codex 和 ZCode 都在用户目录下。
+</Note>
+
+**某个来源的文件不存在不是错误**，只是没有候选。所以第一次扫描通常是「找到 0 条」，
+这不代表功能坏了。
+
+### 导入时发生了什么
+
+导入器的解析逻辑是**纯函数**（文本进、候选出，不碰文件系统），
+所以各家配置格式变了、字段缺了，都有单测能立刻发现。
+
+三个解析器归一化到同一个形状，前端预览弹窗只认这个形状，不认各家原始格式。
+这意味着**导入预览里看到的字段就是最终会存下来的字段**。
+
+<Warning>
+  导入只读取配置，**不会移动或删除**原工具里的任何东西。
+  但它会把其中的密钥（如 `GITHUB_TOKEN`、base URL 里的凭证段）读进扣瓦的本地存储。
+  导入前看一眼预览里要带哪些密钥。
+</Warning>
+
+## 覆盖模型属性
+
+模型目录之上可以做**模型粒度**的属性覆盖，比如：
+
+- 补上某个模型的 `thinkingLevelMap`——决定它支持哪些思考档位（关 / 低 / 中 / 高 …）
+- 调整上下文窗口等展示属性
+
+覆盖是**快照式的**：可以一键重置回内置值。
+
+<Note>
+  思考档位的映射和 UI 上的档位选择器是同一份数据。
+  某个模型显示不出思考档位，通常就是它缺 `thinkingLevelMap`——
+  覆盖一条就能出来。
+</Note>
+
+## 凭据从哪来
+
+内置服务的凭据由 `pi-ai` 的凭据存储负责，可能是环境变量、也可能是系统钥匙串。
+自定义端点的 API Key 存在本地存储里。
+
+两者都不参与提示词缓存的键计算——但**模型 id 会**。
+换模型会改变工具表与系统提示词的字节内容，从而让前缀缓存失效一次。
+换回同一个模型会重新命中。
+
+## 排查
+
+<CardGroup cols={2}>
+  <Card title="模型不出现在选择器里" icon="magnifying-glass">
+    自定义服务先确认 Base URL 与模型 id；导入的先看扫描结果里有没有它——
+    文件路径不对是常见原因（尤其是 XDG 目录被改过的情况）。
+  </Card>
+  <Card title="选了模型但对话报认证错" icon="key">
+    自定义端点看 API Key；内置服务看它的凭据来源（多为环境变量）。
+    401/403 基本都是这一层。
+  </Card>
+  <Card title="没有思考档位可选" icon="brain">
+    该模型缺 `thinkingLevelMap`，在覆盖里补一条。
+  </Card>
+  <Card title="导入扫不到东西" icon="file">
+    先确认源文件真的存在（路径见上表）。扫描对「文件不存在」是静默的，
+    不会报错——它只报「找到了 0 条」。
+  </Card>
+</CardGroup>
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card title="提示词缓存" icon="bolt" href="/features/prompt-cache">
+    为什么换模型会让缓存失效一次。
+  </Card>
+  <Card title="远程与移动端" icon="phone" href="/features/remote-mobile">
+    端点与密钥在多端之间怎么同步。
+  </Card>
+</CardGroup>
