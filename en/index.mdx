@@ -274,8 +274,11 @@ description: "A desktop AI assistant that runs on your own machine — native wi
           <span className="kov-spec__tag">Three buttons only</span>
         </div>
         <p className="kov-spec__val">
-          Deny, just this once, allow and remember. The last is guarded by the
-          writable-root list and can never grant write access to a directory you did not
+          Deny, just this once, allow and remember. "Remember" stores a command word
+          prefix, never a blanket: interpreter and destructive commands get no such
+          button, matches are checked segment by segment, and redirects or command
+          substitution are rejected the way the shell would read them. The writable-root
+          list keeps it from ever granting write access to a directory you did not
           approve.
         </p>
       </div>

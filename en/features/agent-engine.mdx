@@ -87,13 +87,15 @@ implementation phase.
 
 ## Approval level: whether it must ask
 
-<CardGroup cols={5}>
+<CardGroup cols={4}>
   <Card title="ask">write / edit / bash / config tools — every single one asks.</Card>
   <Card title="workspace-write">Inside the workspace and listed writable roots needs no approval; bash still asks, with "remember this class of command" support.</Card>
   <Card title="auto-edit">Writes and edits are fully auto-approved, including outside the workspace; bash still asks.</Card>
   <Card title="auto">Everything auto-approved.</Card>
-  <Card title="(custom)">Several intermediate levels, configurable per directory.</Card>
 </CardGroup>
+
+Those four are the complete set (the level is an enum, not a tunable; `Shift+Tab` cycles
+through them).
 
 ### The approval card's three buttons
 
@@ -110,18 +112,48 @@ implementation phase.
 | `pnpm add -D react` | `pnpm add *` |
 | `git log --oneline` | `git log *` |
 | `cat package.json` | `cat *` |
-| `lsof -ti:1420` (second word is a value) | Exact match, no `*` |
+| `lsof -ti:1420` (second word is a value, so it is dropped) | `lsof *` |
+
+(Exact-match rules without `*` are still supported — that is the form you hand-write into
+the list; the UI only ever produces prefix rules.)
+
+Interpreter and destructive commands (`node` / `bash` / `npx` / `pnpm dlx` / `sudo` /
+`rm` / `cp` / `find`) are **not** remembered — everything after the first word is the code
+to execute or an arbitrary path, so one click would mean a permanent free pass. Their card
+has no third button and simply says the approval is for this one time.
 
 <Warning>
-  These rules must carry two guards. The writable-root list restricts **where** writes
-  may land, and project files can only be *proposed*, never self-authorised. So
-  "remember this class of command" never grants write access to a directory you did not
-  approve manually.
+  These rules must carry three guards. **Segment-by-segment checking** (the second segment
+  of `git log && rm -rf ~` has to match a rule itself), **no hidden writes** (redirects,
+  command substitution, backticks and `$'…'` never match; redirect detection follows shell
+  lexing, so `echo a${IFS}>f` counts as a write), and **escape/quote parsing done the way
+  the shell does it** (anything unparseable is neither allowed nor remembered). On top of
+  those, the writable-root list restricts **where** writes may land, and project files can
+  only be *proposed*, never self-authorised. So "remember this class of command" never
+  grants write access to a directory you did not approve manually.
 
   To be straightforward about one thing: `workspace-write` **does not contain bash**.
   A command can reach any path outside the workspace through the shell. This has its own
   section in `docs/permission-modes.md` — it is a deliberate trade-off, not an oversight.
 </Warning>
+
+### The writable-root list (directories that need no approval outside the workspace)
+
+Inside the workspace writes need no approval and outside it they ask — but real work
+spans projects (a frontend and a backend directory, a shared library outside the
+monorepo), and asking every time is pure noise. The list fixes that: directories you put
+on it are treated as "inside the workspace". Three files, unioned:
+
+| Layer | File | Effect |
+| --- | --- | --- |
+| User | `~/.kova/permissions.json` | Effective — a file on your machine |
+| Project shared | `<workspace>/.kova/permissions.json` | **Proposal only, never effective** — it travels with the repo, and cloning someone's project must not let that repo authorize your agent |
+| Project local | `<workspace>/.kova/permissions.local.json` | Effective — a local file, added to `.git/info/exclude` when written |
+
+"Allow and remember" on the approval card writes into the **machine-local** file (local).
+In other words: every file that can authorize anything lives on your own machine, so there
+is no trust state a repository could forge — a root declared by the project layer only
+shows up on the card as "this project requests X".
 
 ### The two dimensions are separate
 

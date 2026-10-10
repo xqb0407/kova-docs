@@ -86,9 +86,14 @@ Scheduled tasks use their **own** permission axis (`toolPolicyProfile`), three t
 
 | Tier | Behaviour |
 | --- | --- |
-| `read-only` (default) | Every side-effecting tool that would need approval (`bash` / `write` / `edit` / subagent and skill management) is **denied outright** |
-| `workspace-write` | `write` / `edit` pass; `bash` and MCP (arbitrary execution / external side effects) are denied |
+| `read-only` (default) | Every side-effecting tool that would need approval (`bash` / `write` / `edit` / config tools) is **denied outright** |
+| `workspace-write` | `write` / `edit` pass only **inside the workspace or the machine-local writable-root list** — anything beyond that is denied on the spot; `bash`, MCP and the config tools (subagent / skill / theme / plugin management) are denied |
 | `full` | No restriction. Pick it only when the task genuinely needs it |
+
+**An explicit grant is not overridden by the tier**: `allowCommands` (command word
+prefixes) and `allowMcpTools` (exact tool names) are standing authorizations, evaluated
+before the tiers — the same allow-list must not mean opposite things on the "I run it
+myself" path and the "it runs on a schedule" path.
 
 ### What happens when a tool is denied
 
@@ -101,15 +106,18 @@ So a `read-only` daily report that hits `bash` will assemble the report by readi
 files instead, rather than retrying until it times out.
 
 <Warning>
-  This shares its vocabulary with "permission levels" but means something else. This is
-  the single easiest thing to get wrong:
+  This shares its vocabulary with "permission levels", **and the two now decide the same
+  way**:
 
-  - **"Auto within workspace"** (permission level) decides **by path** — it can tell
-    whether the target file is inside the workspace
-  - **"Writable workspace"** (automation tier) decides **by tool category, ignoring
-    paths** — `write`/`edit` always pass, `bash` and MCP are always denied
+  - **"Auto within workspace"** (permission level) decides **by path** — it tells whether
+    the target file is inside the workspace or the writable-root list, and asks when it
+    cannot tell
+  - **"Writable workspace"** (automation tier) **also decides by path** — `write`/`edit`
+    pass only inside the workspace or the writable-root list; anything beyond that, plus
+    `bash`, MCP and the config tools, is denied
 
-  Both use the same capsule styling (the automation editor deliberately reuses
+  The only difference is that nobody can be asked, so "would ask" becomes "denies". Both
+  use the same capsule styling (the automation editor deliberately reuses
   ModePicker's form), so judging by name will mislead you. See
   [Modes overview](/en/features/modes).
 </Warning>

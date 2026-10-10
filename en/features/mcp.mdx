@@ -71,6 +71,14 @@ Same id with a different transport counts as a different definition.
 (`mcp.disabled.<layer>.<id>`), because a personal switch has no business in a file
 you commit and share. Same approach as subagents.
 
+<Warning>
+  **Servers that come from the workspace are disabled by default** (system and plugin
+  layers stay enabled). A server's command is spawned on its first use, **before any
+  approval** — so "the repo ships a `.mcp.json`" must not mean "this machine starts that
+  process on its own". Enable it once in Settings → MCP to run it; that record lives in
+  the local SQLite and is the only authorization state this machine has.
+</Warning>
+
 ### Writing a config
 
 ```jsonc
@@ -88,19 +96,21 @@ you commit and share. Same approach as subagents.
       "type": "stdio",          // optional: command implies stdio, url implies http
 
       // ---- Kova-specific below; ignored in a standard .mcp.json ----
-      "disabled": false,        // for hand-editing only; the UI toggle uses SQLite
       "lifecycle": "lazy",      // lazy (default) | eager | keep-alive
       "idleTimeout": 600000,    // ms, default 10 minutes
-      "approveTools": ["get_*", "list_*"],  // tools matching these globs skip approval
+      "approveTools": ["get_*", "list_*"],  // tools matching these globs skip approval (system layer only — see below)
       "description": "GitHub API"
     }
-  },
-  "settings": {
-    "approveTools": true,       // force approval globally
-    "outputGuard": true
   }
 }
 ```
+
+<Note>
+  There is no `settings` layer and no global approval switch: `approveTools` is a
+  **per-server** field, and the output guard is always on. Enabling and disabling happens
+  in Settings only (stored in the local SQLite) — a `disabled` key in the file is not read,
+  and neither is anything else not listed above.
+</Note>
 
 <Warning>
   **Changing the URL drops the auth fields.** Suspected credential entries in
@@ -122,10 +132,17 @@ one used for writing files and running bash. No separate mechanism is invented. 
 approval is denied, the model receives a blocked tool result, consistent with every
 other denied tool.
 
-Two routes skip approval:
+Two routes skip approval — **both must be decisions made on your own machine**; a file
+that travels with the repository cannot authorize anything:
 
-- The server's `approveTools` glob matches the tool name
-- `settings.approveTools` is explicitly `false` (unset by default, so everything asks)
+- The server's `approveTools` glob matches the tool name **and the declaration comes from
+  the system layer** (`~/.kova/mcp.json`). An `approveTools` written in a workspace layer
+  (`.mcp.json` / `.kova/mcp.json`) has no effect — it only shows up on the approval card as
+  "this project requests X to skip approval". Enabling the server does not change that:
+  enabling means "I am willing to run it", not "I agree it never asks".
+- The machine-local list `allowMcpTools`: "remember this tool" on the approval card writes
+  into `<workspace>/.kova/permissions.local.json`, matching the **full tool name exactly**
+  (remembering one does not open up the rest of that server).
 
 `search` / `describe` / `status` **never trigger approval** — they only read the local
 cache and connection state.

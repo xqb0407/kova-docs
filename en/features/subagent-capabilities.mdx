@@ -101,7 +101,21 @@ mechanism — no new approval system — and a subagent parked on a card in the 
 are actually watching is the only honest option when it cannot ask you itself.
 
 The cost is accepted explicitly: a background subagent waiting for a decision stays
-parked, and `TaskStop` can end it.
+parked, and `TaskStop` can end it (stopping settles that delegation's pending cards as
+denials, so the subagent does not stay stuck on that call). Known residual: when the
+parent session has **no active request** (the main turn finished while the subagent keeps
+working), the live channel cannot deliver the card — it shows up on the next snapshot or
+attach pull.
+
+**It is not only MCP: a subagent's `write` / `edit` / `bash` go through the same
+parent-session approval chain.** Those built-in tools used to be taken from the parent's
+tool table by declaration with no approval hook wired up, so "hand the job to a subagent
+that can write" meant silently widening the permission tier. The decision now lives in one
+function: approval level (confirm / auto-in-workspace / auto-edit / full access), the
+workspace boundary and writable-root list, config-tool confirmations and the unattended
+verdict all treat a subagent exactly like the main agent, with the card appearing in the
+parent session. `Task` itself is not an approval item — it writes nothing and has no side
+effects.
 
 > If servers are declared but currently disabled or unconfigured, the gateway is
 > **still mounted** and a diagnostic is recorded. "The capability does not exist" and "the

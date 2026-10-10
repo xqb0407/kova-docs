@@ -35,12 +35,17 @@ them completely.
 | Level | write / edit | bash | Config tools |
 | --- | --- | --- | --- |
 | Confirm first | Confirm | Confirm | Confirm |
-| Auto in workspace | Workspace + writable-root list auto-approved | Confirm (with "remember this exact command") | Confirm |
+| Auto in workspace | Workspace + writable-root list auto-approved | Confirm (with "remember this kind of command", stored as a word-**prefix** rule like `pnpm add *`) | Confirm |
 | Auto-edit | All approved (including outside the workspace) | Confirm | Confirm |
 | Full access | All approved | All approved | All approved |
 
-The fine print, the writable-root list, and the three buttons are covered in the
-[Conversation workspace](/en/features/conversation).
+Interpreter and destructive commands (`node` / `bash` / `npx` / `pnpm dlx` / `sudo` /
+`rm` / `cp` / `find`) get no "remember" button: everything after the first word is the
+code to execute or an arbitrary path, so one click would mean a permanent free pass. The
+card says outright that the approval is for this one time.
+
+The fine print — the three buttons, the prefix rules and their guards, and the
+writable-root list — lives in the [Agent engine](/en/features/agent-engine).
 
 <Note>
   `Shift+Tab` cycles through the four approval levels. The two dimensions are separate:
@@ -70,19 +75,24 @@ walks you through installing it first.
 | Visible to the model | No (it only appears in the reason text of rejections) |
 
 <Warning>
-  Same name as the approval level, **different meaning — the easiest thing in the whole
-  app to mix up**:
+  Same name as the approval level, **and the two now decide the same way**:
 
-  - "Auto in workspace" (approval level) decides **by path**: it can tell whether the
-    target file is inside the workspace or the writable-root list;
-  - "Writable workspace" (automation tier) decides **by tool category, ignoring paths**:
-    `write` / `edit` always pass; `bash` and MCP always fail — because when nobody is
-    watching there is no "ask" option, only a hard line.
+  - "Auto in workspace" (approval level) decides **by path**: it tells whether the target
+    file is inside the workspace or the writable-root list, and asks when it cannot tell;
+  - "Writable workspace" (automation tier) **also decides by path**: `write` / `edit`
+    pass only inside the workspace or the machine-local writable-root list, and anything
+    beyond that is rejected on the spot; `bash`, MCP and the config tools are rejected
+    too. The only difference is that nobody can be asked, so "would ask" becomes "denies".
 
   The two even look identical (the automation editor deliberately reuses the ModePicker's
   capsule shape), so judging by name will be wrong almost every time. The automation
   default was also tightened from `workspace-write` to `read-only` — the safe default
   when unattended.
+
+  > Historically this tier decided **by tool category, ignoring paths** (`write` / `edit`
+  > always passed), so the boundary its name promised did not exist: an unattended run
+  > could write outside the workspace. If you really want "write anywhere", choose `full`
+  > instead of an in-between tier that does not mean what it says.
 </Warning>
 
 ## 5. Things that are not modes at all

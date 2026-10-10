@@ -62,6 +62,13 @@ MCP 服务器的配置分三层，低到高：
 **启停开关不入文件**，落 SQLite（键 `mcp.disabled.<层>.<id>`）。个人开关不该写进
 随仓库共享的文件里——和子代理的处理方式一致。
 
+<Warning>
+  **工作区来源的服务器默认是关闭的**（系统层与插件层默认开）。服务器命令在首次调用时
+  就会被拉起，**早于任何审批**——所以"仓库里带了一份 `.mcp.json`"不该等于"本机自动
+  跑起那个进程"。要跑就在设置 → MCP 里显式启用一次；那条启用记录存在本机 SQLite 里，
+  是这台机器上唯一能授权的状态。
+</Warning>
+
 ### 写一个配置
 
 ```jsonc
@@ -79,19 +86,20 @@ MCP 服务器的配置分三层，低到高：
       "type": "stdio",          // 可省略：有 command 推定 stdio，有 url 推定 http
 
       // ---- 以下是扣瓦层专属，标准 .mcp.json 里写了会被忽略 ----
-      "disabled": false,        // 仅供手工编辑；界面开关走 SQLite
       "lifecycle": "lazy",      // lazy（默认）| eager | keep-alive
       "idleTimeout": 600000,    // 毫秒，默认 10 分钟
-      "approveTools": ["get_*", "list_*"],  // 命中这些 glob 的工具免审批
+      "approveTools": ["get_*", "list_*"],  // 命中这些 glob 的工具免审批（只认系统层写的，见下）
       "description": "GitHub API"
     }
-  },
-  "settings": {
-    "approveTools": true,       // 全局强制审批
-    "outputGuard": true
   }
 }
 ```
+
+<Note>
+  没有 `settings` 这一层，也没有全局免审批开关：`approveTools` 是**每台服务器**的字段，
+  输出防护是常开的。启停只在设置页切换（落本机 SQLite）——文件里写 `disabled` 这类
+  键不会被读取，上面没有列出的键同样如此。
+</Note>
 
 <Warning>
   **改 URL 会丢掉认证字段。** headers / env 里疑似凭证的项与 URL 绑定——防止你把配置
@@ -109,10 +117,16 @@ MCP 服务器的配置分三层，低到高：
 **MCP 的 `call` 一律走现有的逐工具审批回路**（和写文件、跑 bash 的是同一条路），
 不另造机制。审批被拒时，模型收到的是 blocked 工具结果，和其他工具被拒的语义一致。
 
-有两条免审批的路：
+有两条免审批的路——**都必须是"你自己机器上的决定"**，跟着仓库走的文件授权不了：
 
-- 服务器的 `approveTools` 配了 glob 且命中该工具名
-- `settings.approveTools` 显式设为 `false`（默认不设，即默认都要审）
+- 服务器的 `approveTools` 配了 glob 且命中该工具名，**且这份声明来自系统层**
+  （`~/.kova/mcp.json`）。写在工作区层（`.mcp.json` / `.kova/mcp.json`）的
+  `approveTools` 不产生效力，只作为审批卡上那句「这个项目请求 X 免审批」出现
+  ——clone 一个别人的项目不该让那个仓库给自己的工具免审批。它也不会因为你启用了
+  这个服务器而生效：启用表达的是"我愿意跑它"，不是"我同意它免问"。
+- 本机清单 `allowMcpTools`：审批卡上点「允许并记住这个工具」写进
+  `<工作区>/.kova/permissions.local.json`，粒度是**工具全名逐字相等**（记一个不会
+  顺带放开同服务器的其他工具）。
 
 `search` / `describe` / `status` **不触发审批**——它们只读本地缓存和连接状态。
 
