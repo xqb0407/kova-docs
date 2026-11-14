@@ -1,0 +1,107 @@
+---
+title: "Sandbox (where writes may land)"
+description: "The kernel-level floor: host-side checks for write/edit, macOS Seatbelt for bash, and a fail-closed rule that never runs unsandboxed."
+---
+
+<Note>
+  **Status: engine and the switch are in; the blocked-write card is not yet.** The boundary
+  (host-side write checks + macOS Seatbelt wrapping), the fail-closed rule, session-preference
+  persistence and the composer lock chip all work today (with unit tests and a real-machine
+  check). What is still missing is the card that offers "allow once / remember this
+  directory" when a write is blocked — for now a block surfaces as a tool error the model
+  can act on. The default is still full-access.
+</Note>
+
+Permission presets answer "does it ask first?". The **sandbox mode** answers
+"will the kernel allow it at all?" They are orthogonal: an approval (or an AI
+review) cannot cross the sandbox, and a sandboxed write never even reaches an
+approval card.
+
+| | |
+| --- | --- |
+| Values | `read-only` / `workspace-write` / `full-access` |
+| Governs | A **hard boundary** for file writes (kernel-level, not a hint, not an approval) |
+| Model-visible | No — the model only sees it as a tool error, and that error says what to do next |
+| Applies | Next tool call |
+| Default | **full-access** (the pre-sandbox behaviour); switch it from the composer lock chip, new sessions follow the last choice |
+
+> Off by default on purpose: the biggest risk of a sandbox is not bypass, it is
+> **breaking normal work for no visible reason**. Collect the false-positive list
+> before turning it on by default.
+
+## The three modes
+
+| Mode | write / edit | bash and background tasks |
+| --- | --- | --- |
+| read-only | Always refused | Empty write set for subprocesses (reads stay open) |
+| workspace-write | Workspace + the write roots you recorded; everything else refused | Same, enforced **in the kernel** by macOS Seatbelt |
+| full-access | Not checked | Not wrapped |
+
+The `workspace-write` allow set = workspace + write roots you recorded in
+`.kova/permissions*.json` + platform temp directories + a **toolchain cache
+allow-list** (`~/.bun/install/cache`, `~/.npm`, `~/.cache`, `~/.cargo/registry`,
+`~/Library/Caches`, `~/Library/pnpm`, `~/.yarn/berry/cache`, `~/go/pkg/mod`,
+`~/.gradle/caches`, `~/.m2/repository`, …). Miss one entry and installs start
+failing — that is the most common "it broke for no reason" case.
+
+Two fixed rules:
+
+- **Reads stay open.** read-only means "cannot write", not "cannot look"; it is
+  not confidentiality isolation.
+- **`.env` / `.env.*` / `*.pem` / `*.key` never land on disk** (denyWrite, hard
+  refusal without a prompt).
+
+## Where the boundary is enforced
+
+| Surface | Who writes | How it is bounded |
+| --- | --- | --- |
+| `write` / `edit` | The host process itself | Path check before the write (realpath-resolved: symlink and `..` escapes are judged at their real location) |
+| `bash` (incl. background tasks) | A child process | A generated Seatbelt profile; `sandbox-exec` refuses out-of-bounds writes **in the kernel** |
+
+The order is **deny → allow → refuse**. Refusals come back as tool errors that
+tell the model what to do instead (write inside the workspace, or ask the user
+to add a write root).
+
+## Fail closed
+
+If the sandbox cannot start (missing `ripgrep`, unsupported platform, profile
+generation failed), the command **is not executed** and the error names the
+reason and the way out. Never a silent unsandboxed fallback: "thought it was
+isolated when it was not" is far worse than "this step failed".
+
+## How it relates to the other two mechanisms
+
+```
+sandbox (floor, kernel-level)
+  └─ approval presets / AI review (ceiling, who decides)
+       └─ tool call
+```
+
+- **Approval** decides whether you are asked;
+- **AI review** lets the model decide instead of you;
+- **The sandbox** decides how far an allowed call can reach.
+
+So you can run "Full access" with workspace isolation on: no interruptions, and
+still no writes outside the workspace.
+
+## How to switch it
+
+In the composer toolbar, to the right of the permission picker, there is a **lock**:
+closed with a shield = workspace isolation, a blue closed lock = read-only, open lock = no
+sandbox. Click it to switch; the choice is a **session** preference (survives reloads) and
+new sessions follow your last pick. `full-access` is the default, so you have to switch
+once to actually enable isolation.
+
+## Known limits
+
+- **macOS only** for subprocess isolation in this version; other platforms
+  report an honest error instead of pretending to isolate.
+- **MCP server processes** are not wrapped yet; `write`/`edit` and bash are.
+- **No network policy** yet (file isolation only).
+- The sandbox cannot read intent — it only looks at paths. To stop it from
+  refusing something legitimate, add that root to the write-roots list (the same
+  list "Workspace-write" uses).
+
+<Card title="Next" icon="arrow-right" href="/en/features/modes">
+  The sandbox and its three neighbours: session mode, permission presets, automation policy.
+</Card>

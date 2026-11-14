@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Kova",
-  "description": "Kova（扣瓦）是一个桌面端 AI 助手：Tauri v2 原生应用，Next.js + assistant-ui 会话界面，本地 agent 运行时驱动模型对话、工具执行与会话持久化。",
+  "description": "Kova（扣瓦）是一个桌面端 AI 助手：Electron 原生应用，Next.js + assistant-ui 会话界面，本地 pi-agent sidecar（经 stdio NDJSON 与宿主通信）驱动模型对话、工具执行与会话持久化。",
   "colors": {
     "primary": "#18181b",
     "light": "#a1a1aa",
@@ -84,6 +84,10 @@
                   "href": "/features/modes"
                 },
                 {
+                  "label": "沙箱",
+                  "href": "/features/sandbox"
+                },
+                {
                   "label": "目标模式",
                   "href": "/features/goal-mode"
                 },
@@ -113,8 +117,16 @@
                   "href": "/features/automation"
                 },
                 {
+                  "label": "IM 双向通道",
+                  "href": "/features/im-channels"
+                },
+                {
                   "label": "远程与移动端",
                   "href": "/features/remote-mobile"
+                },
+                {
+                  "label": "安全与密钥",
+                  "href": "/features/security"
                 }
               ]
             },
@@ -186,6 +198,7 @@
                   "features/prompt-queue",
                   "features/prompt-cache",
                   "features/modes",
+                  "features/sandbox",
                   "features/goal-mode",
                   "features/subagents",
                   "features/subagent-capabilities"
@@ -198,7 +211,15 @@
                   "features/mcp",
                   "features/plugins",
                   "features/automation",
+                  "features/im-channels",
                   "features/remote-mobile"
+                ]
+              },
+              {
+                "group": "安全与密钥",
+                "icon": "shield-halved",
+                "pages": [
+                  "features/security"
                 ]
               }
             ]
@@ -296,6 +317,10 @@
                   "href": "/en/features/modes"
                 },
                 {
+                  "label": "Sandbox",
+                  "href": "/en/features/sandbox"
+                },
+                {
                   "label": "Goal mode",
                   "href": "/en/features/goal-mode"
                 },
@@ -325,8 +350,16 @@
                   "href": "/en/features/automation"
                 },
                 {
+                  "label": "IM channels",
+                  "href": "/en/features/im-channels"
+                },
+                {
                   "label": "Remote & mobile",
                   "href": "/en/features/remote-mobile"
+                },
+                {
+                  "label": "Security & keys",
+                  "href": "/en/features/security"
                 }
               ]
             },
@@ -398,6 +431,7 @@
                   "en/features/prompt-queue",
                   "en/features/prompt-cache",
                   "en/features/modes",
+                  "en/features/sandbox",
                   "en/features/goal-mode",
                   "en/features/subagents",
                   "en/features/subagent-capabilities"
@@ -410,7 +444,15 @@
                   "en/features/mcp",
                   "en/features/plugins",
                   "en/features/automation",
+                  "en/features/im-channels",
                   "en/features/remote-mobile"
+                ]
+              },
+              {
+                "group": "Security & keys",
+                "icon": "shield-halved",
+                "pages": [
+                  "en/features/security"
                 ]
               }
             ]

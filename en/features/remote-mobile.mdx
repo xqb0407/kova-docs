@@ -1,6 +1,6 @@
 ---
 title: "Remote access & mobile"
-description: "The desktop gateway, trading a pairing code for a token, three network access paths, and the Expo-built mobile app."
+description: "The desktop gateway, trading a pairing code for a token, four network access paths, SSH remote projects, and the Expo-built mobile app."
 ---
 
 The mobile side of Kova is not a second client implementation. The **desktop opens a
@@ -10,131 +10,175 @@ desktop keeps working, and the session picks back up on reconnect.
 
 ## How it works
 
+The web UI is the **remote entry point** for the desktop assistant: all AI processing,
+session storage, and file operations happen inside your own desktop client (the pi-agent
+sidecar). Once remote access is on, the desktop serves the web UI (HTTP) and the
+conversation channel (WebSocket) on the same port — **no separate web deployment needed**.
+
+```
+browser ──http──▶ desktop gateway (default 0.0.0.0:8787) ─┬─ static web UI
+        ──ws /ws──▶                                    └─ WS channel ──▶ pi-agent sidecar
+```
+
+## First pairing
+
 <Steps>
-  <Step title="The desktop opens a gateway">
-    Turn it on under Settings → Remote. The sidecar starts an HTTP + WebSocket server
-    via `axum` and bridges sessions and tool calls across it.
+  <Step title="Turn on the remote gateway">
+    Settings → Remote access → enable the gateway.
+  </Step>
+  <Step title="Scan or enter the pairing code">
+    Scan the QR code on the settings page, or open the shown address
+    (e.g. `http://192.168.1.5:8787`) — the pairing code is pre-filled. You can also type
+    the 6-digit code manually.
   </Step>
   <Step title="Trade the pairing code for a token">
-    On first connect you enter a pairing code and the server issues a token, which is
-    stored in the system keychain (iOS Keychain / Android Keystore). After that you are
-    not asked again.
-  </Step>
-  <Step title="Connect over WebSocket">
-    The mobile app and the web client hit the same `/ws` endpoint and the same protocol
-    primitives. The desktop's session stream, tool calls, and checkpoints render
-    faithfully on the other side.
+    Pairing issues a long-lived token, so you don't need it afterwards. On the desktop the
+    token is **encrypted at rest in SQLite**; in the browser it lives in localStorage
+    (key `pi.remote`). The pairing code exists only in memory and expires when the gateway
+    restarts; five wrong attempts lock that connection (you can "rotate" it on the desktop).
   </Step>
 </Steps>
 
-## Three ways to reach it
+Desktop and web can be online at the same time, sharing the same local sessions.
 
-<Columns cols={3}>
-  <Card title="LAN direct">
-    Available by default. On the same Wi-Fi, connect straight to the desktop's LAN
-    address. Fine for home and office.
-  </Card>
-  <Card title="Cloudflare Tunnel">
-    Public access with no public IP required. The repo supports supplementary
-    credentials such as a Cloudflare gateway ID to complete the auth flow.
-  </Card>
-  <Card title="Tailscale">
-    Also avoids exposing anything publicly, over private network addresses.
-  </Card>
+## Disconnects and recovery
+
+- Reconnect with exponential backoff starting at 3s, capped at 30s; mobile retries
+  immediately when returning to the foreground.
+- After reconnecting, the client realigns to a **desktop snapshot**: transcripts,
+  in-flight replies, queued messages, and pending approvals are filled in. Snapshots are
+  authoritative — no promise of frame-by-frame replay.
+- Messages sent while offline go into a local outbox and are replayed on reconnect; the
+  gateway deduplicates by `requestId`, so nothing executes twice.
+- If the desktop revoked the token, only re-pairing helps.
+
+## Four network paths
+
+The desktop gateway only listens on the local machine, so something must make it reachable:
+
+<Columns cols={2}>
+  <Column title="Direct LAN (default)">
+    On the same Wi-Fi, scan the QR code or open the address shown on the settings page.
+    On Windows, the firewall prompt must be allowed the first time.
+  </Column>
+  <Column title="Built-in Cloudflare quick tunnel (recommended)">
+    Settings → Remote access → "Public access", one switch: the app launches cloudflared
+    itself (downloads and verifies it if missing), gets a temporary public address, and
+    needs **no Cloudflare account**. The address changes each start; stopping the gateway
+    tears the tunnel down.
+  </Column>
+  <Column title="Manual named tunnel (fixed domain)">
+    Create a named tunnel and point it at `http://localhost:8787` — see the `cloudflared`
+    commands in `docs/remote-access.md`.
+  </Column>
+  <Column title="Tailscale (no public exposure)">
+    Both the desktop and the device sign into the same Tailscale account and use the
+    private network address over WireGuard.
+  </Column>
 </Columns>
 
-Any other WebSocket client can connect — the protocol is plain NDJSON over WS.
+Any other WebSocket client can connect too — non-browser clients use
+`ws://<IP>:8787/ws`; see the header comment in `apps/electron/main/remote.ts`.
 
 ## Security notes
 
 <Warning>
-  Remote access assumes a trusted network. Before you turn it on, confirm:
+  The web UI has the conversation and file capabilities of your desktop assistant. Do not
+  leak the address, pairing code, or token to anyone you don't trust.
 
-  - Pass the pairing code in person on the LAN; do not paste it into a public channel;
-  - Tokens currently **do not expire**. Revocation is all-or-nothing via "revoke all
-    devices" on the desktop;
-  - End-to-end encryption is not implemented yet, so traffic over a
-    tunnel/relay is plaintext WebSocket. Prefer a private-network option such as
-    Tailscale for public access.
+  - **Admin messages are rejected by the gateway** (desktop only): credentials/AI services,
+    MCP, skills, subagents, memory & personalization, model attributes, automations, etc.
+    Remote keeps session/chat operations only. API keys never travel to the web client
+    (masked only).
+  - Tokens are long-lived; revoke via "Revoke all devices" on the desktop or by closing
+    the gateway.
+  - The binding mode can turn off "LAN access": the gateway rebinds to `127.0.0.1`,
+    local-only (for use behind tunnels/Tailscale).
+  - The quick tunnel is only established when explicitly enabled in settings; knowing the
+    public address still requires the pairing code.
+  - Plain HTTP on LAN is cleartext; for sensitive setups use Tailscale or a tunnel (TLS
+    terminates at the edge).
 </Warning>
 
-## The mobile app
+## What the remote web client can do
+
+| Capability | Availability |
+| --- | --- |
+| Streaming chat / abort | ✅ |
+| Session list / history replay / rename / delete | ✅ |
+| Model & skill settings | ❌ (admin messages rejected; desktop only) |
+| Credentials / API keys | ❌ (protocol returns masked values only) |
+| Workspace directory selection | ❌ (remote new sessions use the desktop user home) |
+| Plugin install / uninstall | ❌ (the plugin market is a desktop-local operation) |
+
+Abort is global: aborting on the web also interrupts the desktop reply, and vice versa.
+
+## SSH remote projects
+
+Beyond "desktop execution + remote viewport" there is another remote shape:
+**local runtime + remote executor**. The agent loop, model calls, UI, and sessions stay
+local; `bash`/`read`/`write`/`edit` tool calls go over the system `ssh` command to the
+remote machine. No daemon is deployed — the remote only needs sshd and the code.
+
+- Sessions with a remote target route tool execution through `ssh` (no extra dependency;
+  ProxyJump, `~/.ssh/config` aliases, and agent auth come for free). Connection reuse
+  uses `ControlMaster`.
+- **Keys never reach the sidecar**: key/agent auth is read by the ssh CLI from `~/.ssh/`;
+  password auth goes through ssh2, with the password decrypted and injected by the main
+  process only (the renderer sees a "has password" flag).
+- **The approval gate stays in the sidecar**: remote commands still pass the
+  [approval levels](/en/features/modes), and write roots converge on the remote project
+  directory with checks on both sides.
+- Remote sessions degrade honestly: sandboxing and per-file checkpoints are skipped; the
+  local file tree, Git panel, and local directory picker are hidden; remote git snapshots
+  go over ssh and fall back to "no git info" on failure.
+
+Manage SSH hosts in Settings → Connections → SSH hosts (add/edit/test), and pick one with
+"New remote project…" from the session.
+
+## Mobile app
 
 <CardGroup cols={2}>
   <Card title="Stack">
-    Expo SDK 57 + React Native 0.86 + `@assistant-ui/react-native`. Deliberately
-    **not** Tauri mobile — it reuses the desktop gateway's `/ws` protocol and shares its
-    origin with the browser client.
+    Expo + React Native + `@assistant-ui/react-native`. It reuses the desktop gateway's
+    `/ws` protocol — the same origin as the browser web client, not a separate client.
   </Card>
-  <Card title="Dependency isolation">
-    Mobile dependencies install under `apps/mobile/node_modules`
-    (`install.hoistingLimits = "workspaces"`). RN 0.86 pairs only with react 19.2.3,
-    while desktop runs react 19.3 — each keeps a copy so hoisting cannot raise either
-    version and give Metro duplicate instances.
+  <Card title="Dev commands">
+    Start the desktop remote gateway and allow LAN access first, then:
+    `bun run dev:mobile` · `bun run typecheck:mobile` ·
+    `bun run test:mobile` · `bun run build:mobile:web`.
   </Card>
 </CardGroup>
 
-```bash
-# Start the desktop gateway and allow LAN access first, then:
-bun run dev:mobile        # Expo dev
-bun run typecheck:mobile  # typecheck
-bun run test:mobile       # unit tests
-bun run build:mobile:web  # static web export → apps/mobile/dist
-```
-
-The app also ships a **demo mode** that browses the UI without a live gateway.
-
-## What the web client cannot do
-
-The browser client is the most capable of the three (it runs in the desktop environment),
-but there are still boundaries:
-
-- It cannot install or remove plugins — the marketplace is local desktop behaviour;
-- It cannot change system settings or manage credentials, which go through the Rust
-  host's system keychain;
-- System-level capabilities (window controls, terminal, screenshots) need the desktop
-  host present.
+Mobile dependencies live in `apps/mobile/node_modules`
+(`install.hoistingLimits = "workspaces"`): RN pins a specific react version, so the two
+sides keep separate copies to avoid a double Metro instance.
 
 ## The agent always runs on the desktop
 
-Worth stating on its own, because it decides what remote access actually feels like.
-
-<Columns cols={2}>
-  <Column title="The execution site does not move">
-    Model calls, tool execution, and file access all happen in the sidecar on the
-    desktop. The phone is a viewport, not a second, lesser implementation. If the
-    desktop is off, the phone is just a shell that cannot connect.
-  </Column>
-  <Column title="So the agent is never interrupted">
-    The phone sleeping, backgrounding, or dropping off Wi-Fi has no effect on the task
-    running on the desktop. Reconnecting shows the continuation of the same turn.
-  </Column>
-</Columns>
-
-This is also why remote approval is on the roadmap rather than shipped today: an
-approval request is part of the execution path, so pushing one to your phone and waiting
-for you to release it requires solving backfill and session reconciliation first —
-otherwise approving something whose context you cannot see would be unsafe.
+This is what remote access means in practice: model calls, tool execution, and file I/O
+all happen in the desktop sidecar. The phone is a viewport, not a degraded second
+implementation. Screen off, backgrounding, or losing Wi-Fi does not affect work running on
+the desktop; on reconnect you resume the same turn.
 
 <Note>
-  Today the approval card appears on whichever client you are using. Approving a task
-  you started on the desktop, from the desktop, is safe; approving from a phone means
-  knowing what you are approving. That safety rests on the paired device itself being
-  trusted, not on re-authenticating each time.
+  Today approval cards appear on the client you are using. Starting on desktop and
+  approving on desktop is safe; approving on the phone requires knowing exactly what you
+  approve. This layer trusts the paired device rather than re-authenticating every time.
 </Note>
 
-## What is not built yet
+## Not there yet
 
-The real gap is "away from your computer". Not there today:
+The real gap in mobile is "leaving the computer"; currently missing:
 
-- Push notifications (task complete, awaiting approval, a scheduled task finished);
+- Push notifications (task done, waiting for approval, automation results);
 - Biometric unlock and token rotation;
-- Offline drafts, plus queueing and stream resumption across cell/Wi-Fi switches;
-- Narrow-screen interaction polish (gestures, attachment picking, session list reflow).
+- Offline drafts and queued sending / stream resume on weak networks;
+- Narrow-screen polish (gestures, attachment picking, session list layout).
 
-All of it is on the [roadmap](/en/reference/roadmap). The current shape suits "the phone
-as a remote control while the desktop does the real work" — not the reverse.
+All of these are on the [roadmap](/en/reference/roadmap). Today the phone is a pocket
+remote; the desktop is still where the work happens.
 
 <Card title="Next" icon="arrow-right" href="/en/developers/architecture">
-  Understand which layer each of these features runs in.
+  See which layer each capability runs in.
 </Card>

@@ -1,6 +1,6 @@
 ---
 title: "Goal mode"
-description: "The goal tier: an explicit state machine, two stop valves, a stale-turn guard, and why there is no token budget."
+description: "The goal tier: an explicit state machine, stop valves, a stale-turn guard, acceptance criteria and a time budget, and why there is no token budget."
 ---
 
 Goal mode is the fourth session tier. Once you switch to it, **your first message is the
@@ -11,7 +11,7 @@ objective**: the model works toward it autonomously across turns, without you pr
 agent  = baseTools + subagentTools + plan_enter
 plan   = read-only subset + plan_write + plan_exit
 ask    = read-only subset (no bash) + ask_needs_work
-goal   = baseTools + subagentTools + goal_complete + goal_blocked
+goal   = baseTools + subagentTools + goal_propose_criteria + goal_edit_criteria + goal_complete + goal_blocked
 ```
 
 `goal` gets the **full toolset** (write/edit/bash included), not the plan trio. The
@@ -36,7 +36,7 @@ down the turn.
 | `blocked` | The model reported a deadlock itself. `resumeGoal` returns it to active |
 | `complete` | Terminal. Its exit set is empty |
 
-## Two stop valves, plus your input taking over
+## Stop valves, plus your input taking over
 
 The decision collapses into one pure function, short-circuiting in order — **the order is
 the priority**:
@@ -44,6 +44,11 @@ the priority**:
 <Steps>
   <Step title="Provider error or abort">
     Pause immediately.
+  </Step>
+  <Step title="Time budget">
+    Past the objective's `maxDurationSeconds` (default 2 hours, null = unlimited) it
+    pauses with the reason `time budget reached`. Only **active windows** count: settled
+    on pause, reopened on resume.
   </Step>
   <Step title="Turn limit">
     Past the objective's `maxAutoTurns` (default 300, 0 = unlimited) it pauses. The limit
@@ -66,6 +71,55 @@ original text, so counting at injection would inflate the count.
 send pauses it and resets the safety turn count — mid-run messages are usually course
 corrections, and that message already consumes a turn of context, so the model gets a
 fresh start.
+
+## Acceptance criteria, progress, and evidence (v2)
+
+v2 turns "how do we know it's done" into something verifiable, instead of letting the model
+declare completion verbally.
+
+### Three acceptance modes
+
+<CodeGroup>
+```text auto
+goal_propose_criteria succeeds, then is confirmed directly (confirmedBy="auto") and the same turn continues.
+
+manual
+Stop after proposing and wait for you to confirm the criteria.
+
+skip
+Skip criteria entirely at creation and run immediately.
+```
+</CodeGroup>
+
+The persistent bar lets you view/edit confirmed criteria; `goal_edit_criteria` replaces
+the list as a user edit.
+
+### Progress ledger
+
+`Goal.progress` holds up to 12 entries, recording per-turn tool/file/command/failure counts
+and an assistant text digest. The ledger goes into the UI, artifacts, and the continuation
+user message — **never into the system prompt** (to protect the prefix cache). It is
+rebuilt from JSONL replay after a restart.
+
+### Structured evidence
+
+`goal_complete.results[].refs` makes every completion claim carry verifiable references:
+
+| Type | Check |
+| --- | --- |
+| `command` | Must match a successful bash call within this objective (exitCode 0 or absent) |
+| `file` | Exists / modified (modified requires a successful write/edit in this objective with matching content hash) |
+| `tool` | A successful call with the same name, optional path |
+| `manual` | Allowed, marked "needs human confirmation" |
+
+Every objective needs at least **one machine-verifiable** piece of evidence — it cannot be
+all manual claims.
+
+### No silent privilege escalation
+
+Goal mode keeps the current approval level. Under `ask`, the persistent bar notes that
+"every command will be confirmed", and you can explicitly pick `auto-edit` or `auto`.
+The criteria confirmation card can also set the approval level.
 
 ## The stale-turn guard
 

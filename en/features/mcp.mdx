@@ -147,6 +147,16 @@ that travels with the repository cannot authorize anything:
 `search` / `describe` / `status` **never trigger approval** — they only read the local
 cache and connection state.
 
+## Secret injection
+
+stdio servers don't need their tokens in config files: the settings page can bind an
+environment variable name to a **global secret**, which the host decrypts and injects only
+while spawning the subprocess; the config keeps the binding, never the plaintext.
+Bindings are keyed by "server name + startup-config hash" — changing the startup command
+or a workspace override invalidates the old binding immediately, so a server with a new
+command never silently keeps the old secrets. See
+[Security & keys](/en/features/security) for details and boundaries.
+
 ## Output guard
 
 MCP servers can return a lot. Kova's approach matches `read` and `grep`:

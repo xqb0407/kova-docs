@@ -42,10 +42,10 @@ description: "A desktop AI assistant that runs on your own machine — native wi
     </div>
 
     <div className="kov-trust">
-      <span>Tauri v2 native window</span>
+      <span>Electron native window</span>
       <span>Local sidecar runtime</span>
       <span>Multi-server MCP</span>
-      <span>Expo mobile app</span>
+      <span>IM channels &amp; mobile</span>
     </div>
 
     <div className="kov-cue" aria-hidden="true"><span /></div>
@@ -104,15 +104,15 @@ description: "A desktop AI assistant that runs on your own machine — native wi
           <h3 className="kov-card__title">Data and credentials bypass the middleman</h3>
           <p className="kov-card__body">
             Sessions, memory, subagent definitions, and MCP configuration live in
-            <code>~/.kova/</code> and your workspace's <code>.kova/</code>. API keys go to
-            the system keychain — on macOS, service name
-            <code>com.kova.assistant</code>. You can open the directory and see exactly
+            <code>~/.kova/</code> and your workspace's <code>.kova/</code>. API keys are
+            encrypted with AES-256-GCM in the local database, and the master key is wrapped
+            by the system keychain (safeStorage). You can open the directory and see exactly
             what it stores.
           </p>
           <div className="kov-card__meta">
             <span className="kov-chip">~/.kova/</span>
-            <span className="kov-chip">Keychain</span>
-            <span className="kov-chip">rusqlite</span>
+            <span className="kov-chip">safeStorage</span>
+            <span className="kov-chip">AES-256-GCM</span>
           </div>
         </div>
       </div>
@@ -292,9 +292,10 @@ description: "A desktop AI assistant that runs on your own machine — native wi
         <div className="kov-panel__body">
           The <code>workspace-write</code> level <b style={{ color: "var(--kov-accent)" }}>does not contain bash</b>
           {" "}— a command can reach any path outside the workspace through the shell. That
-          is a deliberate trade-off, covered in its own section of
-          <code>docs/permission-modes.md</code>. When you need real isolation, use a sandbox
-          or a container.
+          is a deliberate trade-off, covered in its own section of the
+          <a href="/en/features/modes">Modes overview</a> and
+          <a href="/en/features/sandbox">Sandbox</a> pages. When you need real isolation,
+          use a sandbox or a container.
         </div>
       </div>
     </div>
@@ -425,8 +426,8 @@ description: "A desktop AI assistant that runs on your own machine — native wi
     <span className="kov-eyebrow">Feature tour</span>
     <h2 className="kov-h2">The feature tour</h2>
     <p className="kov-lede">
-      Ten topics, each with a full design write-up — from the conversation workspace to
-      prompt caching. Click through.
+      Every topic has a full design write-up — from the conversation workspace to remote
+      access and IM channels. Click through.
     </p>
 
     <div className="kov-bento" style={{ marginTop: "2.6rem" }}>
@@ -490,7 +491,7 @@ description: "A desktop AI assistant that runs on your own machine — native wi
         <div className="kov-bezel__core">
           <div className="kov-card__kicker">09</div>
           <h3 className="kov-card__title">Remote &amp; mobile</h3>
-          <p className="kov-card__body">Pairing codes for tokens, three network paths, the Expo app, and the security boundary.</p>
+          <p className="kov-card__body">Pairing codes for tokens, four network paths, SSH remote projects, the Expo app, and the security boundary.</p>
         </div>
       </a>
       <a className="kov-bezel" href="/en/features/agent-engine" style={{ gridColumn: "span 6", display: "block" }}>
@@ -498,6 +499,20 @@ description: "A desktop AI assistant that runs on your own machine — native wi
           <div className="kov-card__kicker">10</div>
           <h3 className="kov-card__title">Agent engine</h3>
           <p className="kov-card__body">The turn lifecycle, built-in toolset, context compaction, and long-term memory.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/im-channels" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">11</div>
+          <h3 className="kov-card__title">IM channels</h3>
+          <p className="kov-card__body">WeChat / Feishu / DingTalk / WeCom bots: session binding, the owner gate, and reply granularity.</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/en/features/security" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">12</div>
+          <h3 className="kov-card__title">Security &amp; keys</h3>
+          <p className="kov-card__body">API key encryption at rest, tool-output redaction, and MCP secret injection boundaries.</p>
         </div>
       </a>
     </div>
@@ -510,7 +525,8 @@ description: "A desktop AI assistant that runs on your own machine — native wi
     <p className="kov-lede">
       A plugin is not a paragraph of prompt text — it is an interface you operate. The key
       is that its output is structured data, so the agent edits the same document instead
-      of handing you a picture.
+      of handing you a picture. These three workspaces come from the official plugin
+      repository; add it in the app via "Plugins → Add marketplace".
     </p>
 
     <div className="kov-bento kov-bento--trio">
@@ -564,7 +580,7 @@ description: "A desktop AI assistant that runs on your own machine — native wi
   {/* ============ ARCHITECTURE ============ */}
   <section className="kov__wrap kov__section kov-rv">
     <span className="kov-eyebrow">Architecture</span>
-    <h2 className="kov-h2">Four layers</h2>
+    <h2 className="kov-h2">Three layers</h2>
     <p className="kov-lede">
       Splitting the agent into its own process is deliberate: long jobs never block the
       interface, a frontend crash never kills work in progress, and every surface reuses
@@ -577,11 +593,11 @@ description: "A desktop AI assistant that runs on your own machine — native wi
           <i /><i /><i /><span>repo map</span>
         </div>
         <div className="kov-panel__body">
-          <pre><code>{`apps/desktop      Next.js + assistant-ui conversation UI, Tauri v2 host
-apps/sidecar     pi-agent runtime (Bun/TS), NDJSON over stdio
-apps/mobile      Expo SDK 57 + RN 0.86, via the desktop gateway /ws
-packages         pi-protocol cross-surface contract · shared
-plugins          office · canvas · ui-design · marketplace.json`}</code></pre>
+          <pre><code>{`apps/desktop      Next.js + assistant-ui conversation UI (renderer)
+apps/electron     Electron main + preload: windows / terminal / files / notifications / tray / IM / remote gateway
+apps/sidecar      pi-agent runtime (single Bun binary), NDJSON over stdio
+apps/mobile       Expo mobile app, via the desktop gateway /ws
+packages          pi-protocol contract · pi-runtime session runtime · pi-sandbox boundary`}</code></pre>
         </div>
       </div>
     </div>
@@ -592,7 +608,7 @@ plugins          office · canvas · ui-design · marketplace.json`}</code></pre
     <span className="kov-eyebrow">Get started</span>
     <h2 className="kov-h2">Running in five minutes</h2>
     <p className="kov-lede">
-      You need <a href="https://bun.sh">Bun</a>, a Rust toolchain, and Node.js. Full
+      You need <a href="https://bun.sh">Bun</a> and Node.js ≥ 20 (macOS / Windows). Full
       details in the <a href="/en/quickstart">Quickstart</a>.
     </p>
 
@@ -605,8 +621,7 @@ plugins          office · canvas · ui-design · marketplace.json`}</code></pre
           <pre><code>{`git clone https://github.com/xqb0407/kova.git
 cd kova
 bun install
-bun run tauri:dev`}</code></pre>
-        </div>
+bun run dev`}</code></pre></div>
       </div>
     </div>
   </section>

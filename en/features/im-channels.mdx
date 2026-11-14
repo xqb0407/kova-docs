@@ -1,0 +1,92 @@
+---
+title: "IM channels"
+description: "Conversations from WeChat, Feishu, DingTalk, and WeCom with your local Kova assistant: messages land in a bound session, replies go back through the channel."
+---
+
+Kova can connect the assistant to the chat tools you already use: **WeChat, Feishu, DingTalk,
+and WeCom** bots, with two-way channels. A message comes in from the chat tool, binds to a
+desktop session, the agent works on it, and the reply is sent back through the channel.
+All AI processing, tool execution, and session storage still happen in the sidecar on your
+own desktop — the chat tool is only an entry point.
+
+The management entry is **sidebar "Remote" → "IM" tab**: create a bot, pair via QR or
+credentials, choose a session, set the working directory, delete.
+
+## Supported platforms
+
+<CardGroup cols={2}>
+  <Card title="WeChat">
+    Create a bot by scanning a QR code (iLink). **Private chats only**. The first
+    message auto-creates a session; an expired token requires re-scanning.
+  </Card>
+  <Card title="Feishu / Lark">
+    WebSocket long connection (no public callback). Supports **one-scan creation**,
+    or manual App ID / App Secret. Private chats only, text and rich text.
+  </Card>
+  <Card title="DingTalk">
+    Stream-mode long connection (no public callback). Fill Client ID + Client Secret;
+    enable the "robot" capability in the open platform and publish in Stream mode.
+    One-on-one chats only.
+  </Card>
+  <Card title="WeCom">
+    Smart-robot long connection. Enable API mode with "long connection" in the admin
+    console and fill BotID + long-connection Secret. One-on-one chats only.
+  </Card>
+</CardGroup>
+
+## Binding model
+
+One chat **maps durably to one desktop session**:
+
+- The first message auto-creates a session (working directory from the bot config) and
+  sends a one-time onboarding message explaining `/new` (start a new chat), `/clear`
+  (compact context), and `/stop` (stop the task);
+- Every later message in that chat routes to the same session, and the binding survives
+  an app restart;
+- The bot detail page can **pin** the bot to a specific session (single-session mode).
+
+## Access control (owner gate)
+
+The first private-chat sender on each channel becomes the owner; messages from strangers
+are rejected with a fixed notice — no session is created out of nowhere. The detail page's
+"Access control" shows the owner (masked) and can reset it; the next private message
+becomes the new owner.
+
+## Reply granularity
+
+A dropdown on the detail page, four levels:
+
+| Level | Behaviour |
+| --- | --- |
+| Standard | Assistant text is sent back message by message as it completes |
+| Full | Text plus a summary of that turn's tool calls (name + argument hint + failure marker) |
+| Digest | The whole turn compressed into one line (first line + tool call count) |
+| Live progress | Additionally pushes one thinking snippet per round and tool execution progress; keeps "typing" while processing |
+
+## Thinking level
+
+The sidecar produces no thinking events by default. Each channel config can set its own
+thinking level (off / low / medium / high): applied to the session when a binding is
+created, and to all bound sessions when the config changes. If you pick "Live progress"
+while thinking is off, the frontend automatically switches the level to low — otherwise
+there is nothing to push. Higher levels mean slower replies and higher cost.
+
+## Channel management
+
+The detail page covers: enable/disable (stops polling, keeps the binding), bind/unbind,
+session selection, reply granularity, working directory, access control (owner view/reset
+plus **send test message**), and delete. The test message reuses the channel's last inbound
+target; it is rejected while the channel is disabled.
+
+## Known limits
+
+- **Private / one-on-one chats only** for now — no group chats;
+- Non-text messages (images / voice / files) are ignored at first release;
+- Approval and Question interactions have no cards in IM: the desktop still shows the card,
+  and the IM reply tells you to confirm there;
+- Credentials are validated first and then encrypted at rest, same storage as
+  [model API keys](/en/features/security).
+
+<Card title="Next" icon="arrow-right" href="/en/features/remote-mobile">
+  Besides IM, the browser and phone can use the desktop as a remote entry point.
+</Card>

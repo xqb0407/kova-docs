@@ -7,26 +7,25 @@ The bilingual (Chinese / English) site for Kova, built on [Mintlify](https://min
 ## 本地预览 / Preview locally
 
 ```bash
-cd site
 npm i -g mintlify        # 或 npx mintlify
-mintlify dev
+mintlify dev             # 在仓库根目录执行
 ```
 
 ## 结构 / Layout
 
 ```
-site/
-  docs.json          Mintlify 配置：暗色主题、品牌色、双语导航、页脚
-  landing.css        落地页专用视觉系统（仅 index.mdx / en/index.mdx 引用）
-  favicon.png        站点图标（apps/desktop 的哈士奇吉祥物）
-  logo.png           导航栏 logo（同上，自带底色，明暗主题通用）
-  index.mdx          落地页（默认语言：简体中文，URL 为 /）
-  quickstart.mdx     快速开始
-  features/          功能详解（14 页：对话 / Agent 引擎 / 循环视图 / 模型服务 / 队列 / 缓存 /
-                     模式 / goal / 子代理 / 能力模型 / MCP / 插件 / 自动化 / 远程移动）
-  developers/        开发者文档（3 页）
-  reference/         路线图、开源许可
-  en/                English（mirror of the root pages, URL 为 /en/...）
+docs.json          Mintlify 配置：暗色主题、品牌色、双语导航、页脚
+landing.css        落地页专用视觉系统（仅 index.mdx / en/index.mdx 引用）
+favicon.png        站点图标（应用吉祥物）
+logo.png           导航栏 logo（同上，自带底色，明暗主题通用）
+index.mdx          落地页（默认语言：简体中文，URL 为 /）
+quickstart.mdx     快速开始
+features/          功能详解（17 页：对话 / Agent 引擎 / 循环视图 / 模型服务 / 队列 / 缓存 /
+                   模式 / 沙箱 / goal / 子代理 / 能力模型 / MCP / 插件 / 自动化 /
+                   IM 通道 / 远程移动 / 安全密钥）
+developers/        开发者文档（3 页）
+reference/         路线图、开源许可
+en/                English（mirror of the root pages, URL 为 /en/...）
 ```
 
 **目录约定不能改**：Mintlify 的多语言约定是「默认语言放根目录，其他语言放以语言代码
@@ -52,7 +51,7 @@ and does not cross-link automatically, so update both sides when you change a pa
 
 ## 发布 / Deploy
 
-Mintlify 托管需要把 `site/` 作为站点根目录推送，然后用 Mintlify CLI 连接仓库：
+Mintlify 托管需要把本仓库（根目录即站点根目录）推送到 GitHub，然后用 Mintlify CLI 连接仓库：
 
 ```bash
 mintlify connect

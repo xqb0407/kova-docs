@@ -1,13 +1,60 @@
 ---
 title: "插件与工作台"
-description: "技能装载、面板系统、本地插件市场，以及仓库自带的 office / canvas / ui-design 三个工作台。"
+description: "插件市场（目录 / git）、技能装载、面板系统，以及官方插件仓库里的 office / canvas / ui-design 三个工作台。"
 ---
 
 扣瓦的"可扩展"分成三层：**工具**（agent 能调用什么）、
 **技能**（agent 知道怎么做某类事）、**面板**（人能打开来用的界面）。
 插件可以同时提供这三层。
 
+## 插件是什么
+
+**一个目录 + 一份清单**（`.kova-plugin/plugin.json`）。目录里按需放五类组件：
+
+| 组件 | 清单字段 | 作用 |
+| --- | --- | --- |
+| 技能 | `skills` | 给 agent 的可复用方法论，按 `description` 触发 |
+| MCP 服务器 | `mcpServers` | 给 agent 的工具面（读写外部系统、跑分析…） |
+| 面板 | `panels` | 右侧面板里的交互式 UI，可绑定工作区文档 |
+| 钩子 | `hooks` | 在 agent 生命周期事件上跑命令（可阻断） |
+| 子智能体 | `subagents` | 预置的子代理定义（`@` 提及调用） |
+
+## 插件从哪来：市场
+
+插件**不在主仓库里**，一律经市场安装。应用内「插件 → 添加市场」加一个市场，
+再从市场里装具体插件。两种市场：
+
+<Columns cols={2}>
+  <Column title="目录市场">
+    直接读本地目录。安装时可选**链接安装**——缓存目录指向源码，
+    改文件即时生效，适合本地开发与私有分发。
+  </Column>
+  <Column title="Git 市场">
+    浅克隆到本机，刷新即重新克隆。适合公开分发：
+    更新流程是 push → 刷新市场 → 更新插件。
+  </Column>
+</Columns>
+
+一个市场就是「含 `marketplace.json` 的目录」，列出它旗下的插件：
+
+```json
+{
+  "name": "my-plugins",
+  "displayName": "我的插件",
+  "plugins": [
+    { "name": "my-plugin", "source": "./plugins/my-plugin",
+      "description": "一句话说明", "category": "效率" }
+  ]
+}
+```
+
+安装后插件被物化到应用数据目录 `plugins/cache/<marketplaceId>/<name>/`
+（链接安装时是指向源码的符号链接）。整包 enabled 开关控制全部组件；
+安装/卸载/启停后技能与子代理热重载、MCP 连接池重建、面板列表随之更新。
+
 ## 内置工作台
+
+官方插件仓库随市场分发三个工作台，装上就能用：
 
 ### Office · 办公套件
 
@@ -22,22 +69,16 @@ description: "技能装载、面板系统、本地插件市场，以及仓库自
   </Column>
 </Columns>
 
-底层导出走 `pptxgenjs` 与 `exceljs`。
-
 ### Canvas · 无限画布
 
 Excalidraw 式无限空间，文本、形状、图片、Mermaid、表格、图表、网页嵌入自由摆放，
-整幅画布可导出 SVG。agent 以 `<name>.canvas.json` 文档协作——
-也就是说画布上的东西是结构化数据，不是图片，agent 才能真的改它。
+整幅画布可导出 SVG。agent 以 `<name>.canvas.json` 文档协作。
 
 ### UI Design · 设计工作台
 
-Figma 式的页面 / 画板 / 图层树，加完整属性检视
-（填充、渐变、描边、圆角、阴影、文字）。文档是独立的 `*.uidesign.json`。
-
-这个插件比其他两个更进一步：它自带 `.mcp.json` 定义 MCP 服务器，
-所以 agent 可以**直接调用 MCP 工具控制画布**——增删改节点、对齐分布、
-堆叠排版、成组。内置 iOS、Material 与通用移动端三套设计规范技能供 `use_skill` 加载。
+Figma 式的页面 / 画板 / 图层树，加完整属性检视。这个插件比其他两个更进一步：
+它自带 `.mcp.json` 定义 MCP 服务器，所以 agent 可以**直接调用 MCP 工具控制画布**——
+增删改节点、对齐分布、堆叠排版、成组。内置 iOS、Material 与通用移动端三套设计规范技能。
 
 ## Agent 怎么用上插件
 
@@ -46,8 +87,7 @@ Figma 式的页面 / 画板 / 图层树，加完整属性检视
 <Columns cols={2}>
   <Column title="agent 能改的，才叫工作台">
     Canvas 的画布是 `<name>.canvas.json`，幻灯片是 `.deck.canvas.json`，
-    表格是 `.sheet.univer.json`，设计稿是 `.uidesign.json`。
-    agent 改的是这些 JSON，界面再把它渲染出来——
+    表格是 `.sheet.univer.json`。agent 改的是这些 JSON，界面再把它渲染出来——
     所以它能新增一个形状、改一个单元格样式，而不是只能"重新画一遍给你看"。
   </Column>
   <Column title="人看结果，agent 拿数据">
@@ -61,80 +101,61 @@ Figma 式的页面 / 画板 / 图层树，加完整属性检视
 <CodeGroup>
 ```text 工具 / Tool
 直接出现在工具表里，模型可以像调用 read 一样调用它。
-Applies as an ordinary tool the model can select.
 
 技能 / Skill
 通过 use_skill 按需装载到上下文，而不是常驻——
 避免每轮都背着三套设计规范。
-Loaded on demand via use_skill instead of always resident.
 
 面板 / Panel
 agent 可以用 open_plugin_panel 主动打开某个面板，把结果摆到你面前。
-The agent can open a panel itself via open_plugin_panel.
 ```
 </CodeGroup>
 
 <Note>
-  `ui-design` 多走了一步：它自带 `.mcp.json`，所以 agent 通过 MCP 工具
-  直接操作画布节点——增删改、对齐分布、堆叠排版、成组都是参数化调用，
-  比让模型生成一大段 JSON 再赌它能解析成功要可靠得多。
-  这也是"插件提供 MCP 服务器"这条路值得走的原因。
+  MCP 工具**不会**作为独立工具注册进模型工具表（保护提示词前缀缓存），
+  而是统一经常驻的 `mcp` 网关调用，全名约定 `<server>__<tool>`。
+  所以插件技能里要写全名与 `args` 的 JSON 字符串形式，不要写裸工具名。
 </Note>
 
 ## 技能
 
-技能是装进 agent 上下文的知识包。技能在设置 → 技能里装载与管理，
+技能是装进 agent 上下文的知识包：不写代码，只固化「遇到什么任务、按什么步骤做」。
+每个技能是一份 `SKILL.md`，`name` 与 `description` 必填——`description` 决定**什么时候触发**，
+要写触发场景而不是功能清单。技能在设置 → 技能里装载与管理，
 插件也可以通过清单里的 `skills` 字段贡献技能。
-UI Design 的三套设计规范就是以技能形式提供的。
 
-## 本地插件市场
+## 面板
 
-`plugins/marketplace.json` 是本仓库的插件市场清单，
-在应用内「插件市场」里点选安装。插件装在 `plugins/` 目录下，
-以 `.kova-plugin/plugin.json` 作为清单。
+面板是插件贡献给右侧面板的交互式 HTML。宿主把它挂进 iframe，
+通过 postMessage 桥（`kova-ui-plugin/1`）与插件通信，可以读写绑定到面板的工作区文档。
 
-<CodeGroup>
-```json plugin.json
-{
-  "name": "office",
-  "version": "0.2.0",
-  "description": "办公套件工作台：幻灯片 + 表格",
-  "author": { "name": "Kova" },
-  "category": "效率",
-  "icon": "icon.svg",
-  "keywords": ["office", "slides", "pptx", "univer"],
-  "skills": "skills",
-  "panels": "panels.json",
-  "mcpServers": ".mcp.json"
-}
-```
-</CodeGroup>
+四种打开入口，都是同一个标签页：
 
-清单字段的可选组合：`skills/` 提供技能，`panels.json` 注册面板，
-`mcpServers` 为插件贡献 MCP 服务器。
-
-## 关于构建产物
+1. 右侧面板「+」菜单里的面板列表；
+2. 文件产物卡的「在面板中打开」（按 `opens` glob 匹配）；
+3. agent 调 `open_plugin_panel` 工具；
+4. **首次写入自动开板**：agent 第一次 `write`/`edit` 命中某面板的 `opens` glob 时，
+   宿主自动打开该面板并绑定文件。
 
 <Warning>
-  UI 面板的单文件 HTML（`plugins/<name>/<name>.html`）与内置插件包 zip
-  **都是构建产物，不入库**。首次克隆后必须生成，否则面板打不开：
-
-  ```bash
-  bun run build:plugins                                    # 生成面板 HTML
-  cd apps/sidecar/pi-agent && bun run plugins:pack         # 重打内置 zip
-  ```
-
-  `build:sidecar`、`test`、`smoke` 都会自动补齐缺失的产物，
-  但第一次直接跑应用时最好手动执行一次。
-  `build:plugins` 支持 `--force` 强制重建。
+  面板跑在不透明源的沙箱里（`blob:` URL）：`localStorage` / `cookie` 不可用，
+  相对路径资源加载不到，所有 CSS/JS 必须内联，入口文件上限 32 MiB。
+  面板要声明权限（`document` / `export` / `agent` / `notify`），
+  未声明的能力发消息会被丢弃。
 </Warning>
 
-## 自带设置项一览
+## 关于分发
 
-除了上面的工作台，应用设置里还有与扩展能力相关的分区：
-MCP 服务器管理、技能管理、子代理定义、电脑控制、
-可观测性接入、用量统计与热力图、备份与恢复。
+随应用分发的「内置插件包」机制已移除：插件一律经市场安装——目录市场适合本地开发与
+私有分发，git 市场适合公开分发。市场安装直接复制插件目录（或链接安装指向源目录），
+源码即产物，无需任何打包链路。
+
+## 信任边界
+
+安装一个带 MCP 的插件 = 在你机器上以你的权限运行它的代码。宿主只接受标准 MCP 字段，
+工具调用仍受[权限档位](/features/modes)与审批策略约束。开发期先在隔离目录试，
+不要把未知第三方插件直接装上生产环境。
 
 <Card title="想自己写一个插件？" icon="code" href="/developers/extending">
-  开发者文档里有清单格式、目录约定与构建流程。
+  开发者文档里有清单格式、目录约定与调试流程。
 </Card>

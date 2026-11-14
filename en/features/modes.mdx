@@ -37,6 +37,7 @@ them completely.
 | Confirm first | Confirm | Confirm | Confirm |
 | Auto in workspace | Workspace + writable-root list auto-approved | Confirm (with "remember this kind of command", stored as a word-**prefix** rule like `pnpm add *`) | Confirm |
 | Auto-edit | All approved (including outside the workspace) | Confirm | Confirm |
+| AI review | No card: the model judges each call (low risk runs, high risk is refused; a failed review falls back to the card) | Same | Same |
 | Full access | All approved | All approved | All approved |
 
 Interpreter and destructive commands (`node` / `bash` / `npx` / `pnpm dlx` / `sudo` /
@@ -48,12 +49,27 @@ The fine print — the three buttons, the prefix rules and their guards, and the
 writable-root list — lives in the [Agent engine](/en/features/agent-engine).
 
 <Note>
-  `Shift+Tab` cycles through the four approval levels. The two dimensions are separate:
+  `Shift+Tab` cycles through the five approval levels. These dimensions are separate:
   session mode decides **whether it may write**, the approval level decides **whether it
-  must ask**.
+  must ask**, and the [sandbox](/en/features/sandbox) decides **where writes may land**.
 </Note>
 
-## 3. Work mode (who it is for)
+## 3. Sandbox mode (where writes may land)
+
+| | |
+| --- | --- |
+| Values | read-only / workspace-write / full-access |
+| Governs | A **kernel-level floor** for file writes — an approval (or AI review) cannot cross it |
+| Model-visible | No (a blocked call surfaces as a tool error that says what to do next) |
+
+`write`/`edit` are checked by the host before the write; `bash` (with background
+tasks) is refused outside the allow set **in the kernel** by Seatbelt on macOS. If
+the sandbox cannot start, the command is not executed at all.
+
+Details — the allow set, the toolchain cache list, and why read-only is not
+confidentiality isolation — are on the [sandbox page](/en/features/sandbox).
+
+## 4. Work mode (who it is for)
 
 | | |
 | --- | --- |
@@ -66,7 +82,7 @@ Orthogonal to session mode: that one switches permissions and shape, this one sw
 audience. The design tier has a gate — if the ui-design plugin is missing or disabled it
 walks you through installing it first.
 
-## 4. The automation policy tier (for unattended runs)
+## 5. The automation policy tier (for unattended runs)
 
 | | |
 | --- | --- |
@@ -95,7 +111,7 @@ walks you through installing it first.
   > instead of an in-between tier that does not mean what it says.
 </Warning>
 
-## 5. Things that are not modes at all
+## 6. Things that are not modes at all
 
 | Name | What it actually is |
 | --- | --- |
@@ -105,7 +121,7 @@ walks you through installing it first.
 | `plan_enter` / `plan_exit` | Tools the **model** uses to request a tier switch; `plan_exit`'s confirmation is a mode-level HITL |
 | The goal turn limit | A field on one objective, not a mode |
 
-## 6. Where each one is stored
+## 7. Where each one is stored
 
 | Thing | Stored in |
 | --- | --- |

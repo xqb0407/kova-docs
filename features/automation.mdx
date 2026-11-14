@@ -9,7 +9,8 @@ description: "定时 Agent 任务：独立会话执行、错过补跑、无人�
 
 <Note>
   调度器源码 vendored 自 `@amaster.ai/pi-task-scheduler`（Apache-2.0）。
-  本地有意改动过几处，其中影响行为的是：调度器生命周期由 sidecar 自持，
+  本地有意改动过几处，其中影响行为的是：调度器作为独立进程运行、由主进程监督
+  （`kova-automation`），到点后的执行请求转给 sidecar；
   以及调度工具的作用域从「当前会话」放宽到 **app 级**——自动化是应用级资产，
   跨会话可见。
 </Note>

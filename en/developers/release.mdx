@@ -1,123 +1,102 @@
 ---
 title: "Build & release"
-description: "The one-command packaging script, Tauri build config, artifact locations, and the difference between packaging and releasing."
+description: "The one-command packaging script, the three build chains, artifact locations, and the difference between packaging and releasing."
 ---
 
-## One-command packaging
+## One-command packaging (macOS)
 
 ```bash
-./scripts/build-release.sh    # macOS / Linux
-scripts\build-release.bat     # Windows
+./scripts/build-release.sh
 ```
 
-The script runs dependency install → build the sidecar → build the frontend → emit
-installers.
+It runs: environment preflight → sidecar build → renderer build → main-process build →
+installer.
 
 <CodeGroup>
-```bash Flags
---skip-install   skip dependency install
---debug          debug build
---allow-dev      allow packaging with dev dependencies present
---check          environment preflight only, no actual build
+```bash Common flags
+--skip-install    skip bun install when dependencies are already current
+--check           environment preflight only, no build
+--dev-channel     build Kova Dev.app (dev channel); default is the production channel
 ```
 </CodeGroup>
 
-## Building in stages
+Artifacts land in `apps/electron/release/` (`release-dev/` for the dev channel) as
+`.dmg` / `.app`. The macOS bundle is **ad-hoc deep-signed** during packaging
+(`apps/electron/scripts/after-pack.cjs`) and not notarized — first launch needs one GUI
+confirmation.
+
+## Windows packaging
+
+Windows goes through `electron-builder --win nsis`, the same chain as CI:
+
+```bash
+bun run package:win        # artifact: release/Kova_<version>_<arch>-setup.exe
+bun run package:win:dev    # artifact: release-dev/… (dev channel)
+```
+
+It only runs on Windows; stop `bun dev` / `next dev` first so the watcher does not restart
+Electron during the build.
+
+## Step-by-step builds
+
+The three chains can run separately; together they equal `bun run build`:
 
 <CodeGroup>
 ```bash Terminal
-# Frontend artifacts only
-bun run build
+bun run build:sidecar    # sidecar → apps/electron/binaries/kova-worker
+bun run build:renderer   # renderer static export → renderer-out
+bun run build:main       # main process / preload → apps/electron/dist
 
-# Desktop installers only
-# beforeBuildCommand runs build:sidecar + build automatically
-bun run tauri:build
-
-# Agent sidecar only (fills in plugin artifacts first)
-bun run build:sidecar
-
-# Release flow
-bun run release
+bun run build            # all three chains
+bun run start            # run the built main process (no hot reload, like an installed build)
 ```
 </CodeGroup>
 
-## Where artifacts land
+## Packaging ≠ releasing
 
-```
-apps/desktop/src-tauri/target/release/bundle/
-```
+These two get conflated, but they are different jobs:
 
-| Platform | Artifacts |
-| --- | --- |
-| macOS | `.dmg` / `.app` |
-| Windows | NSIS setup `.exe` |
-
-<Note>
-  Windows produces **no MSI**. The WiX toolchain is unreliable with CJK product names,
-  while NSIS is not — so NSIS is the only path kept.
-</Note>
-
-## Packaging is not releasing
-
-These get conflated constantly, but the responsibilities are different:
-
-| | What it does | Which command |
+| | What it does | Who does it |
 | --- | --- | --- |
-| **Package** | Compiles installers | `build-release.sh` / `tauri:build` |
-| **Release** | Syncs the version, tags, pushes to the remote | `bun run release` (`scripts/release.mjs`) |
-| **Mirror to GitHub** | Pushes the mirror, cleans up tags and history | `./scripts/sync-github.sh` |
+| **Package** | Compile an installer | `build-release.sh` / `bun run package:win` |
+| **Release** | Sync versions, tag, push | `node scripts/release.mjs <version>` |
+| **Mirror to GitHub** | Push the mirror and clean tags/history | `./scripts/sync-github.sh` |
 
-`release.mjs` **only** syncs the version, tags, and pushes to the remote — it does not
-attach installers to a GitHub Release. To mirror to GitHub (including tag and history
-cleanup), run `./scripts/sync-github.sh`. See `docs/release.md` in the repository.
+Pushing a tag triggers CI (`.github/workflows/release.yml`): it first creates a Draft
+Release, then the macOS (`macos-14`, producing the dmg + `SHA256SUMS-macos.txt`) and
+Windows (NSIS setup.exe) jobs package and `gh release upload` straight into that draft.
+Before publishing, check the dmg / exe and the SHA256SUMS. `release.mjs` **only** syncs
+versions, tags, and pushes.
 
-## Mobile is a separate pipeline
+## Versions
 
-Mobile runs on its own `release-mobile.yml` workflow:
+Versions come from a single source, synced across `package.json`, `apps/electron`, and the
+workspace packages. `release.mjs` syncs versions before tagging. Do not hand-edit a single
+`package.json`.
 
-- **Manual trigger only** — it does not follow main releases;
-- Produces **unsigned** IPA / APK, kept as workflow artifacts;
-- **Not attached to Releases.**
-
-It is split out because mobile does not yet have a real distribution and signing flow;
-automating it would only produce artifacts nobody can obtain.
-
-## Version numbers
-
-The version is a single source of truth, synced across `package.json`, the Tauri
-config, and the individual workspace packages. `bun run release` syncs it before
-tagging. Do not hand-edit one `package.json`.
-
-## Pre-release checklist
+## Release checklist
 
 <Steps>
-  <Step title="Preflight the environment">
-    `./scripts/build-release.sh --check`
+  <Step title="Preflight">
+    `./scripts/build-release.sh --check`.
   </Step>
-  <Step title="Run the tests">
+  <Step title="Confirm the gate passes">
     ```bash
-    bun run test              # sidecar unit tests
-    bun run test:mobile       # mobile unit tests
-    bun run typecheck:mobile  # mobile typecheck
+    bun run verify:goal        # full gate
     ```
-  </Step>
-  <Step title="Confirm plugin artifacts are present">
-    ```bash
-    bun run build:plugins
-    ```
-    Panel HTML and zips are not committed, and a missing one only surfaces after
-    installation.
   </Step>
   <Step title="Package and verify the installer">
-    Install from the bundle directory in a clean environment and run the smoke test —
-    especially keychain reads/writes and sidecar startup.
+    Take the installer from the artifact directory, install it once in a clean environment,
+    and smoke it — especially key reads/writes and sidecar startup. End-to-end smoke
+    scripts live in `apps/electron/scripts/`.
   </Step>
   <Step title="Release">
-    `bun run release` to tag and push; `./scripts/sync-github.sh` if you want the
-    GitHub mirror.
+    Check with `node scripts/release.mjs <version> --dry-run`, then drop `--dry-run`;
+    pushing the tag makes CI produce the Draft Release. Use `./scripts/sync-github.sh`
+    afterwards if you need the GitHub mirror.
   </Step>
 </Steps>
 
 <Card title="Back to reference" icon="arrow-right" href="/en/reference/roadmap">
-  See what comes next.
+  See what's planned next.
 </Card>

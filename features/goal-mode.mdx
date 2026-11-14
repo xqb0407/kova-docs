@@ -1,6 +1,6 @@
 ---
 title: "目标模式"
-description: "goal 档：显式状态机、两条停机阀、过期护栏，以及为什么没有 token 预算。"
+description: "goal 档：显式状态机、停机阀、过期护栏、验收标准与时间预算，以及为什么没有 token 预算。"
 ---
 
 目标模式（goal）是会话模式的第四档。切到这一档之后，你说的**第一句话就是目标**，
@@ -10,7 +10,7 @@ description: "goal 档：显式状态机、两条停机阀、过期护栏，以�
 agent  = baseTools + subagentTools + plan_enter
 plan   = 只读子集 + plan_write + plan_exit
 ask    = 纯只读子集（无 bash）+ ask_needs_work
-goal   = baseTools + subagentTools + goal_complete + goal_blocked
+goal   = baseTools + subagentTools + goal_propose_criteria + goal_edit_criteria + goal_complete + goal_blocked
 ```
 
 `goal` 拿的是**完整工具集**（含 write/edit/bash），不含 plan 三件套。
@@ -36,13 +36,18 @@ goal 不是「跑到底」的布尔标志。终态和暂停态必须可区分，
 | `blocked` | 模型主动报告死锁。`resumeGoal` 回到 active |
 | `complete` | 终态，出口是空集 |
 
-## 两条停机阀 + 你输入即接管
+## 停机阀 + 你输入即接管
 
 判定收敛在一个纯函数里，逐条短路，**顺序即优先级**：
 
 <Steps>
   <Step title="provider 报错或被中止">
     立即暂停。
+  </Step>
+  <Step title="时间预算">
+    超过这条目标的 <code>maxDurationSeconds</code>（默认 2 小时，null = 不限）就暂停，
+    原因记为 <code>time budget reached</code>。只计**活跃窗口**：暂停时结算，
+    恢复时重开窗口。
   </Step>
   <Step title="轮次上限">
     超过这条目标的 <code>maxAutoTurns</code>（默认 300，0 = 不限）就暂停。
@@ -62,6 +67,50 @@ goal 不是「跑到底」的布尔标志。终态和暂停态必须可区分，
 **你输入即接管**：goal 档里有 active 目标时，你发的任何消息都会把它暂停
 并重置安全轮次计数——你中途发消息通常是在纠偏，这条消息本身已经占掉一轮上下文，
 模型拿到的是全新起点。
+
+## 验收标准、进度台账与证据（v2）
+
+v2 把「怎么算做完」变成可核验的结构，而不是让模型口头宣布完成。
+
+### 验收标准三模式
+
+<CodeGroup>
+```text auto
+goal_propose_criteria 成功后直接确认（confirmedBy="auto"），同一轮继续执行。
+
+manual
+提议后停下，等你确认标准再执行。
+
+skip
+建目标即跳过标准，直接执行。
+```
+</CodeGroup>
+
+常驻条上可以查看/编辑已确认的标准；`goal_edit_criteria` 以用户身份替换清单。
+
+### 进度台账
+
+`Goal.progress` 最多 12 条，每轮记录工具 / 文件 / 命令 / 失败数与 assistant 文本摘要。
+台账只进 UI、产物与续跑的 user 消息，**不进 system prompt**——保护前缀缓存。
+重启后从 JSONL 回放重建。
+
+### 结构化证据
+
+`goal_complete.results[].refs` 让每条完成声明都带可核验的引用：
+
+| 类型 | 校验口径 |
+| --- | --- |
+| `command` | 必须匹配本次目标内成功的 bash 调用（exitCode 0 或缺省） |
+| `file` | 存在 / 修改（修改需本次目标成功 write/edit，内容哈希一致） |
+| `tool` | 同名成功调用，可选路径 |
+| `manual` | 允许，但标记「需人工确认」 |
+
+整个目标至少要有**一条机器可核验**的证据，不能全是人工声明。
+
+### 权限不静默提权
+
+goal 沿用当前审批档。`ask` 档下常驻条会提示「每条命令都会确认」，
+你可以点「放手跑」显式选择 `auto-edit` 或 `auto`；确认标准卡片上也可以选权限档。
 
 ## 过期护栏（stale-turn guard）
 

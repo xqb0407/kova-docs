@@ -15,16 +15,17 @@ description: "Apache License 2.0，二次开发时的声明要求，以及项目
 
 ## 主要依赖
 
-本项目站在这些开源项目的肩膀上（完整清单见各包 `package.json` 与 `Cargo.toml`）：
+本项目站在这些开源项目的肩膀上（完整清单见各包 `package.json` 与 `THIRD-PARTY-NOTICES.md`）：
 
 | 层 | 项目 |
 | --- | --- |
-| 运行时与打包 | [Bun](https://bun.sh) · [Tauri v2](https://tauri.app) · [Next.js](https://nextjs.org) · [React](https://react.dev) |
+| 运行时与打包 | [Bun](https://bun.sh) · [Electron](https://www.electronjs.org/) · [Next.js](https://nextjs.org) · [React](https://react.dev) |
+| 移动端 | [Expo](https://expo.dev) · [React Native](https://reactnative.dev) |
 | 对话界面 | [assistant-ui](https://assistant-ui.com) · [Vercel AI SDK](https://ai-sdk.dev) · [Streamdown](https://streamdown.ai) · [Radix UI](https://radix-ui.com) / [shadcn/ui](https://ui.shadcn.com) · [lucide-react](https://lucide.dev) · [framer-motion](https://motion.dev) · [cmdk](https://cmdk.paco.me) |
 | Agent 运行时 | [pi-agent-core / pi-ai](https://www.npmjs.com/package/@earendil-works/pi-agent-core) · [Model Context Protocol SDK](https://github.com/modelcontextprotocol) · [croner](https://github.com/Hexagon/croner) |
 | 编辑器与终端 | [CodeMirror 6](https://codemirror.net) · [xterm.js](https://xtermjs.org) |
 | 办公插件 | [Univer](https://univer.ai) · [LeaferJS](https://www.leaferjs.com) · [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) · [exceljs](https://exceljs.dev) · [jszip](https://stuk.github.io/jszip/) |
-| 数据与状态 | [zustand](https://zustand.docs.pmnd.rs) · [zod](https://zod.dev) · [Recharts](https://recharts.org) · [rusqlite](https://github.com/rusqlite/rusqlite) · [keyring](https://github.com/hwchen/keyring-rs) · [axum](https://github.com/tokio-rs/axum) |
+| 数据与状态 | [zustand](https://zustand.docs.pmnd.rs) · [zod](https://zod.dev) · [Recharts](https://recharts.org) · [node:sqlite](https://nodejs.org/api/sqlite.html) / [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) · Electron [safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) |
 | 3D 与视觉效果 | [Three.js](https://threejs.org) / [@react-three/fiber](https://r3f.docs.pmnd.rs) |
 | 中文字体 | [霞鹜文楷](https://github.com/lxgw/LxgwWenKai) · [Noto Sans/Serif SC](https://fonts.google.com/noto) · [Geist](https://vercel.com/geist) · [Inter](https://rsms.me/inter/) · [JetBrains Mono](https://www.jetbrains.com/mono/) |
 
@@ -33,7 +34,7 @@ description: "Apache License 2.0，二次开发时的声明要求，以及项目
 从架构到细节，扣瓦大量借鉴与依赖社区成果。特别感谢：
 
 <AccordionGroup>
-  <Accordion title="assistant-ui 与 Tauri 社区">
+  <Accordion title="assistant-ui 与 Electron 社区">
     分别撑起了对话式 UI 与跨平台桌面运行时。
     这两个项目的 issue 区与文档是本仓库许多疑难的第一答案来源。
   </Accordion>

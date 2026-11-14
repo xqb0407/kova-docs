@@ -53,6 +53,21 @@ plus a list of model ids.
 Once added, the service appears in the model picker alongside the built-in ones, with
 no distinction between them.
 
+## Model auto-discovery
+
+Custom services can enable **auto-discovery** (`autoDiscover`): after saving/enabling,
+Kova requests the service's `/models` endpoint in the background and registers the
+gateway-reported ids as AUTO models — appending only missing ids, and **never overwriting**
+models you added by hand or imported.
+
+- The service card's "Refresh discovery" button forces a refresh (a background task, not
+  the management queue);
+- Results are cached per service for 6 hours, bound to a config fingerprint
+  (endpoint / protocol / credential reference / headers) — changing the endpoint or
+  account invalidates and re-discovers;
+- Failures cool down for 10 minutes with no network retries; startup reads the cache
+  synchronously without touching the network.
+
 ## Importing from other tools
 
 If you already have model services configured in another tool, import them instead of
@@ -111,8 +126,8 @@ Overrides are **snapshot based** and can be reset to the built-in values in one 
 ## Where credentials come from
 
 Built-in service credentials are handled by `pi-ai`'s credential store, which may mean
-environment variables or the system keychain. Custom endpoint keys live in local
-storage.
+environment variables or the system keychain. Custom endpoint keys are stored encrypted
+with AES-256-GCM in local storage (see [Security & keys](/en/features/security)).
 
 Neither participates in the prompt cache key — but the **model id** does. Switching
 models changes the byte content of the tool table and system prompt, which misses the

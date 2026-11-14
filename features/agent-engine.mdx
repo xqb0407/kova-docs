@@ -59,7 +59,8 @@ sidecar 注册的工具大致分为这几类：
 | 联网 | `WebFetch` `WebSearch` | 抓取与检索 |
 | 浏览器 | 浏览器工具集 | 由 `browser-config.ts` 配置 |
 | 网络请求 | HTTP 工具集 | 由 `http-tools.ts` 提供 |
-| 图像 | `screenshot` `generate_image` `echo_image` | 截图、生成与回显，含镜像与配置缓存 |
+| 图像 | `screenshot` `generate_image` `see_image` | 截图、生成与视觉辅助（`see_image` 让纯文本模型按需看图，默认关闭） |
+| 知识库 | `kb_read` `kb_search` | 知识源检索与读取 |
 | 交互 | `Question` | agent 反问用户，驱动问答流程 |
 | 面板 | `open_plugin_panel` `open_file` | 打开工作台面板或文件 |
 
@@ -80,14 +81,15 @@ sidecar 注册的工具大致分为这几类：
 
 ## 权限档位：问不问
 
-<CardGroup cols={4}>
-  <Card title="ask">write / edit / bash / 配置类工具，每次都确认。</Card>
-  <Card title="workspace-write">工作区内 + 可写根清单内的目录免确认；bash 仍确认，但支持"允许并记住这类命令"。</Card>
-  <Card title="auto-edit">写与编辑全部免确认，含工作区外；bash 仍确认。</Card>
-  <Card title="auto">全免确认。</Card>
-</CardGroup>
+| 档位 | 行为 |
+| --- | --- |
+| `ask` | write / edit / bash / 配置类工具，每次都确认 |
+| `workspace-write` | 工作区内 + 可写根清单内免确认；bash 仍确认，支持「允许并记住这类命令」 |
+| `auto-edit` | 写与编辑全部免确认（含工作区外）；bash 仍确认 |
+| `review` | 不弹卡：模型逐次判风险，低风险执行、高风险拦截；审查失败退回弹卡 |
+| `auto` | 全免确认 |
 
-这四档就是全部（档位是枚举，不是可调参数；`Shift+Tab` 在它们之间循环）。
+这五档就是全部（档位是枚举，不是可调参数；`Shift+Tab` 在它们之间循环）。
 
 ### 审批卡的三个按钮
 
@@ -122,7 +124,8 @@ sidecar 注册的工具大致分为这几类：
 
   同时要坦白一点：`workspace-write` 这档**管不住 bash**。
   命令可以通过 shell 写到工作区之外的任何位置。这一点在
-  `docs/permission-modes.md` 里有专门章节说明，不是设计疏漏而是取舍。
+  [模式总览](/features/modes)与[沙箱](/features/sandbox)里有专门章节说明，
+  不是设计疏漏而是取舍。
 </Warning>
 
 ### 可写根清单（工作区外也要免确认的目录）
@@ -175,8 +178,7 @@ sidecar 注册的工具大致分为这几类：
 子代理定义的本机层在 `~/.kova/subagents`，工作区层在 `<工作区>/.kova/subagents`
 （可随仓库提交、与团队共享），都可在设置 → 子代理里管理。
 发现机制分三层：内置定义、用户自定义、以及插件提供的定义。
-子代理活动会被持久化，长任务中途重启也能接上
-（见 `docs/subagent-activity-persistence-design.md`）。
+子代理活动会被持久化，长任务中途重启也能接上（见[子代理](/features/subagents)）。
 
 ## 定时任务与无人值守
 

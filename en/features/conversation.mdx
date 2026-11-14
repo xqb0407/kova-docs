@@ -28,7 +28,7 @@ Underrated, but load-bearing.
   </Column>
 </Columns>
 
-The design is written up in `docs/prompt-queue-design.md` in the repository.
+The design is written up in the [Prompt queue](/en/features/prompt-queue) page.
 
 ## Attachments and @-mentions
 
@@ -74,6 +74,14 @@ The thread uses [Streamdown](https://streamdown.ai) for streaming Markdown with 
 math, and Mermaid support. Code blocks, tables, and diagrams are not re-laid-out on every
 arriving token — streaming message rendering has had dedicated performance work.
 
+## Desk pet (optional)
+
+An optional little companion: embedded in a corner of the window, or floating on your
+desktop in its own window. It reacts to the agent's lifecycle — working, waiting for
+approval, waiting for your answer, done, failed, automation results — and pops a bubble
+you can click to jump straight to the session. Enable it under Settings → Desk pet,
+preview the pet library, or import a custom `pet.json`.
+
 ## What the agent is doing in all this
 
 The conversation workspace looks like UI design, but several of its mechanisms exist
@@ -84,15 +92,15 @@ precisely so the agent can work reliably.
     What the model sees is **your choice**, not its guess. An `@` pointing at a specific
     file or directory gives the agent a precise entry point to read on demand, instead
     of swallowing the whole project in one go; images travel a separate multimodal
-    channel (see `docs/image-part-design.md` and
-    `docs/user-image-attachment-plan.md`). That is both cheaper in tokens and less
+    channel with mirroring. That is both cheaper in tokens and less
     likely to pick the wrong file than "paste the repo and let it search".
   </Accordion>
   <Accordion title="The prompt queue: turning turn boundaries into something explicit">
     What the queue gives the agent is **clarity about turn boundaries**. It knows which
     turn your addition belongs after, so it injects in order instead of interrupting the
     turn in flight and discarding the intermediate state. The agent can safely run a
-    long task while you finish writing the follow-up. See `docs/prompt-queue-design.md`.
+    long task while you finish writing the follow-up. See
+    [Prompt queue](/en/features/prompt-queue).
   </Accordion>
   <Accordion title="Checkpoints: you roll back world state, not just text">
     A checkpoint records tool calls and file changes. After a rollback the agent resumes
@@ -119,11 +127,11 @@ precisely so the agent can work reliably.
 Settings are organised by capability. Every module below is a real screen in the app:
 
 <CardGroup cols={3}>
-  <Card title="General & appearance">General, appearance, code theme, shortcuts, accessibility</Card>
+  <Card title="General & appearance">General, appearance, code theme, shortcuts, accessibility, desk pet</Card>
   <Card title="Models & secrets">Model providers, credentials and environment variables, quota top-up fields</Card>
-  <Card title="Capabilities">MCP servers, skills, subagents, computer control</Card>
-  <Card title="Data">Backup and restore, archives, memory history</Card>
-  <Card title="Remote">Remote gateway, paired devices</Card>
+  <Card title="Capabilities">MCP servers, skills, subagents, computer control, hooks</Card>
+  <Card title="Data">Backup and restore, archives, memory history, projects</Card>
+  <Card title="Remote">Remote gateway, paired devices, SSH hosts, IM channels</Card>
   <Card title="Observability">Tracing integration, usage stats and heatmaps</Card>
 </CardGroup>
 

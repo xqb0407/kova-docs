@@ -1,0 +1,84 @@
+---
+title: "Security & keys"
+description: "API key encryption at rest, tool-output redaction, and MCP secret injection boundaries — what local-first protects, and where protection stops."
+---
+
+Local-first means credentials and sessions stay on your machine. This page explains
+**how exactly they are protected** — and **where protection stops**: which parts are hard
+boundaries and which are only best-effort backstops.
+
+## How keys are stored
+
+Model API keys, MCP credentials, remote-access tokens, and backup configuration are
+encrypted before landing in the local SQLite database — **no plaintext**:
+
+- The algorithm is **AES-256-GCM** with a 32-byte random master key;
+- The master key is wrapped by **Electron safeStorage** (the system keychain on macOS);
+  if safeStorage is unavailable it degrades to a 0600 local key file, and the keys page
+  states the active backend (system keychain / local key file / unavailable);
+- The master key file is **not** in the session database and **not** in backup packages;
+- Plaintext rows from older versions are migrated in place at startup.
+
+Backups carry the ciphertext along with the database: restoring on the same machine works;
+on another machine the master key differs and keys show "cannot decrypt — re-enter" —
+ciphertext without its key is useless, by design.
+
+## Tool-output redaction
+
+Secrets injected into bash are registered per thread (24h TTL). Tool results (`read`,
+browser, HTTP, subtask output, …) are **recursively redacted** before entering the model
+context: matches of the original value and its base64 variant are rewritten to
+`[REDACTED:NAME]`; image data fields are left untouched. Strings shorter than 8 characters
+are not redacted, to avoid mangling ordinary text.
+
+<Warning>
+  Redaction covers the original value and base64 only. A model can still exfiltrate a
+  secret via reversal, hex encoding, or an outbound network request — **this is a
+  backstop, not hard isolation**. Use a sandbox or container when you need real isolation.
+</Warning>
+
+## MCP secret injection
+
+Injecting tokens into MCP servers (e.g. GitHub) follows a few hard rules:
+
+- **Bindings live only on this machine**. `.mcp.json` / workspace override layers / plugin
+  manifests **cannot** declare which secrets they want — workspace files travel with the
+  repo, so they cannot self-authorize. Bindings live in local kv only.
+- **Bindings are keyed by server name + startup-config hash**. A workspace override or a
+  changed startup command changes the hash and invalidates the old binding — a server with
+  a new command never silently keeps the old set of secrets.
+- **Only global-scope secrets are allowed**. The MCP connection pool is shared across
+  sessions by server name; workspace-scoped values inside a global subprocess would be
+  ambiguous.
+- **Config holds bindings, never values**. What is saved is an "env name → secret name"
+  mapping; the secret value is neither written to `mcp.json` nor returned to the UI.
+- **Plaintext never crosses processes**. stdio MCP subprocesses are spawned by the sidecar,
+  whose environment the host cannot edit directly — so the sidecar hands the mapping to the
+  host, the host decrypts and returns only the env map, and the sidecar passes it to the
+  subprocess.
+- Values live in sidecar memory only until the connection drops; disconnect, config change,
+  or secret change discards them.
+
+MCP tool results also pass through output redaction before reaching the model context.
+
+Known limit: HTTP-form MCP servers are not yet wired to the secret store (they still use
+literal headers from config).
+
+## Approvals are deterministic code
+
+Besides secrets, the other boundary is **tool execution asking you**. Suspending, approving,
+denying, and rolling back happen in deterministic code; the model saying "done" does not
+count. Session mode governs "may it write", approval level governs "must it ask", sandbox
+mode governs "where may it write" — three independent mechanisms, covered in
+[Modes overview](/en/features/modes) and [Sandbox](/en/features/sandbox).
+
+## One-paragraph summary
+
+Key encryption at rest, best-effort output redaction, least-privilege MCP injection, and
+asking before execution — each layer states what it covers and what it does not. The
+remaining judgment (especially "should this value leave the machine at all") depends on
+your assessment of the channel and plugin trust; there is no silver bullet at that layer.
+
+<Card title="Next" icon="arrow-right" href="/en/features/modes">
+  See how the approval boundary is implemented for tool execution.
+</Card>

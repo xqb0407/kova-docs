@@ -1,149 +1,160 @@
 ---
 title: "Architecture"
-description: "How responsibility and data flow are divided between the Tauri host, the Next.js frontend, the pi-agent sidecar, and the protocol layer."
+description: "How responsibility and data flow are divided between the Electron main process, the Next.js renderer, the pi-agent sidecar, and the cross-surface protocol layer."
 ---
 
-Kova is a four-layer monorepo. Understanding how these four divide the work is more
-useful than reading any single file.
+Kova is a monorepo. Understanding how the layers divide the work is more useful than
+reading any single file: the **main process** owns the system, the **renderer** owns the
+UI, and the **sidecar** is the agent itself. They cooperate over two channels.
 
 ## The layers
 
 ```mermaid
 graph TD
-  subgraph desktop["apps/desktop · Tauri v2 app"]
+  subgraph electron["apps/electron · Electron shell"]
+    M[Main process<br/>command routing · windows · terminal · files<br/>notifications · tray · git · IM · remote gateway]
+    PRE[preload<br/>window.kovaHost · desktop marker]
+    DB[(SQLite · keys via safeStorage)]
+  end
+  subgraph renderer["apps/desktop · renderer"]
     W[Webview<br/>Next.js + assistant-ui]
-    H[Rust host src-tauri<br/>window · keychain · sidecar lifecycle]
-    G[Remote gateway<br/>axum · HTTP + WS]
   end
   subgraph sidecar["apps/sidecar/pi-agent · Bun runtime"]
     AG[agent loop<br/>model calls · tool execution]
-    D[sessions / mcp / skills<br/>subagent / tools / model / secrets]
-    ST[(SQLite via host RPC)]
+    D[mcp / skills / subagent<br/>goal / permissions / sessions]
   end
-  subgraph shared["packages"]
-    P[pi-protocol<br/>cross-surface contract]
-    SH[shared]
-  end
-  PL[plugins/<br/>office · canvas · ui-design]
+  MO[apps/mobile · Expo]
 
-  W <-->|NDJSON over stdio| AG
-  H -->|spawn / reap subprocess| AG
-  AG <-->|host RPC on stdout| ST
-  AG --> D
-  G <-->|/ws, same protocol| AG
-  M[apps/mobile<br/>Expo + RN] <--> G
-  W <--> P
-  AG <--> P
-  AG --> PL
-  SH -.-> W
+  W <-->|invoke / events| PRE
+  PRE <--> M
+  M <--> DB
+  M -->|spawn / reap child process| AG
+  W <-->|sessions & agent: bridged via desktop-shell invoke| M
+  W -.->|remote web = WebSocket| M
+  M <-->|NDJSON over stdio| AG
+  MO <-->|/ws, same protocol| M
 ```
+
+Three communication channels, each with its own job:
+
+- **Renderer ↔ main**: invoke / events over `window.kovaHost` (windows, dialogs, paths,
+  files, notifications, plus the bridge for session and agent requests);
+- **Main ↔ sidecar**: the **NDJSON protocol** over stdin/stdout; the main process spawns
+  the sidecar as a child process;
+- **Remote clients ↔ main**: `/ws` WebSocket, using the same cross-surface contract as
+  the desktop.
+
+## apps/electron
+
+The Electron shell. `main/` is the main process: command routing and system capabilities —
+windows and custom title bars, terminal (pty), files, notifications, tray, git, IM
+channels, the remote gateway, key encryption, and SQLite (`node:sqlite`, falling back to
+better-sqlite3). `preload/` exposes `window.kovaHost`, the `__KOVA_DESKTOP__` marker, and
+the drag-region bridge.
+
+<Note>
+  Session and business data are not written directly by the sidecar; they go through the
+  host bridge over stdio to the main process — key decryption and table access both happen
+  there. That is also why the sidecar is testable as a standalone process: without a host
+  it falls back to local storage.
+</Note>
 
 ## apps/desktop
 
-The desktop frontend: Next.js plus [assistant-ui](https://assistant-ui.com).
+The desktop frontend, Next.js + [assistant-ui](https://assistant-ui.com). Main directories:
 
 | Path | Contents |
 | --- | --- |
 | `components/agent-thread` | Conversation stream rendering |
-| `components/settings` | Settings page and per-capability sections |
+| `components/settings` | Settings pages and capability sections |
 | `components/code` `components/files` | Editor and file tree |
 | `components/agents` | Subagent management UI |
 | `components/marketplace` | Plugin marketplace |
 | `components/automations` | Scheduled tasks |
-| `components/remote` | Remote gateway and paired devices |
-| `src-tauri/` | Rust host |
-
-The Rust host owns the Rust-side concerns: the window and custom title bar, the system
-keychain, spawning and reaping the sidecar subprocess, and exposing business-table reads
-and writes to the sidecar as **host RPC**.
-
-<Note>
-  The sidecar does not write files or open SQLite connections for business data — that
-  work is handed to the host over host RPC on stdout. This is exactly why the sidecar
-  falls back to local SQLite storage when there is no Rust host, as in `bun run smoke`.
-</Note>
+| `components/remote` `lib/im` | Remote gateway and IM channels |
+| `lib/pi` | Request/response bridge to the sidecar (transport chosen by desktop-shell invoke / remote WS) |
 
 ## apps/sidecar/pi-agent
 
-The agent runtime, Bun + TypeScript. Entry point `src/index.ts`, exposing an **NDJSON
-protocol** on stdin/stdout, organised by domain:
+The agent runtime, Bun + TypeScript, built as a single binary `kova-worker`.
+It speaks the **NDJSON protocol** on stdin/stdout, organized by domain:
 
 ```text
 src/
-  agent/          agent loop and context management
-  automation/     scheduled tasks
-  goal/           goal mode
-  mcp/            MCP client and config merging
-  model/          model provider integrations
-  permissions/    modes and approval levels
-  plugins/        plugin loading
-  protocol/       NDJSON protocol implementation
-  secrets/        credential reads
-  sessions/       session storage
-  skills/         skill loading
-  storage/        storage layer
-  subagent/       subagent scheduling
-  tools/          built-in tools
-  observability/  tracing
+  agent/        agent loop and context management
+  automation/   scheduled tasks
+  checkpoint/   per-file checkpoints
+  goal/         goal mode
+  knowledge/    knowledge sources
+  mcp/          MCP client and config merging
+  model/        model provider access and dynamic discovery
+  permissions/  modes and approval levels
+  plugins/      plugin loading and markets
+  protocol/     NDJSON protocol implementation
+  secrets/      credential reads and injection
+  sessions/     session storage
+  skills/       skill loading
+  storage/      storage layer
+  subagent/     subagent scheduling
+  tools/        built-in tools
+  observability/ observability
 ```
 
 ## apps/mobile
 
-Expo SDK 57 + React Native 0.86. No backend — it connects to the sidecar through the
-desktop gateway's `/ws`, exchanging a pairing code for a token stored in the
-Keychain/Keystore. See [Remote & mobile](/en/features/remote-mobile).
+Expo + React Native. No backend — it connects to the sidecar through the desktop remote
+gateway's `/ws` and trades a pairing code for a token. See
+[Remote access & mobile](/en/features/remote-mobile).
 
 ## packages
 
-- **pi-protocol** — the cross-surface contract shared by frontend, sidecar, and mobile.
-  All three take their types from here, so nobody writes a fourth copy.
-- **shared** — utilities and components shared on the desktop side.
-
-## plugins
-
-See [Plugins & workspaces](/en/features/plugins).
+- **pi-protocol**: the single source of cross-surface contracts. The renderer, sidecar,
+  and mobile app all take types from here.
+- **pi-runtime**: session runtime state and replay.
+- **pi-sandbox**: sandbox execution boundaries.
+- **automation-core** / **knowledge-core**: scheduled-task and knowledge-source core logic.
+- **pi-agent-core / pi-ai**: the embedded agent runtime and model access libraries (see
+  the acknowledgements below).
 
 ## Data flow: one tool call
 
 <Steps>
-  <Step title="The frontend sends">
-    While rendering the thread, the frontend sends a message to the sidecar over NDJSON.
+  <Step title="The renderer sends a request">
+    You send a message in the thread; the renderer hands it to the main process via the
+    desktop-shell invoke bridge, and the main process forwards it to the sidecar.
   </Step>
-  <Step title="The sidecar decides">
-    The agent loop hands the message to the model, which returns tool calls. The sidecar
-    checks each call against the current session mode and approval level.
+  <Step title="The sidecar decides what to call">
+    The agent loop passes the message to the model, which returns tool calls. The sidecar
+    checks whether this call is allowed under the session mode and approval level.
   </Step>
-  <Step title="It may stop and ask">
-    If approval is required, the sidecar pushes an approval event to the frontend, which
-    shows the card. Your choice goes back to the sidecar.
+  <Step title="It may need to ask you">
+    If approval is needed, the sidecar pushes an approval event and the UI shows a card;
+    your choice goes back to the sidecar.
   </Step>
   <Step title="Execute and persist">
-    The tool runs inside the sidecar. Writes that touch business tables go to the Rust
-    host over host RPC on stdout, where the keychain and SQLite live.
+    The tool runs inside the sidecar. Business-table writes go through the host bridge to
+    the main process, where key decryption and SQLite access live.
   </Step>
   <Step title="Push events back">
-    Results and streaming deltas return to the frontend as events, render as a tool-call
-    record in the thread, and land in a checkpoint.
+    Tool results and streaming deltas are pushed back to the renderer as thread events,
+    rendered into the conversation, and checkpointed.
   </Step>
 </Steps>
 
-## Why the agent is a separate process
+## Why the agent runs in a separate process
 
-- **The UI stays responsive** — long jobs and heavy tool output never block the render
-  process;
-- **Crash isolation** — a sidecar failure does not take the window down with it;
-- **Reuse across surfaces** — mobile and web connect to the same WS endpoint and the
-  same runtime, so there is no second implementation;
-- **Testable in isolation** — `bun run smoke` runs the full protocol handshake with no
-  GUI at all.
+- **The UI never stalls**: long jobs and large tool outputs do not block the renderer;
+- **Crash isolation**: a sidecar failure does not take the window down with it;
+- **Multi-surface reuse**: mobile, web, and desktop all use the same runtime — no second
+  implementation;
+- **Independent testing**: the sidecar can run a full protocol handshake with no GUI.
 
-## Standing on other people's work
+## Standing on the shoulders of others
 
-Session transcripts, context compaction, and the subagent model are ported from or
-modelled on Earendil Works'
-[pi-agent](https://www.npmjs.com/package/@earendil-works/pi-agent-core). The many
-`PI-Desktop 同设计` comments in the code point at those sources.
+Conversation transcripts, context compaction, and subagents are ported/derived from
+Earendil Works' [pi](https://github.com/earendil-works/pi). The many `PI-Desktop 同设计`
+annotations in code comments point back to those origins.
 
 <Card title="Next" icon="arrow-right" href="/en/developers/extending">
-  Build your own thing on top of these layers.
+  Add your own pieces on top of these layers.
 </Card>

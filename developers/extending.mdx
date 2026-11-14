@@ -5,10 +5,12 @@ description: "写一个插件、接一个 MCP 服务器、加一个技能，以�
 
 ## 写一个插件
 
+插件是「一个目录 + 一份清单」，在插件仓库里开发，经市场安装进扣瓦。
+
 <Steps>
   <Step title="建目录与清单">
     ```bash
-    mkdir -p plugins/my-plugin/.kova-plugin
+    mkdir -p my-plugin/.kova-plugin
     ```
 
     清单是 `.kova-plugin/plugin.json`：
@@ -31,33 +33,31 @@ description: "写一个插件、接一个 MCP 服务器、加一个技能，以�
     `skills/` 提供技能（agent 知道怎么做），
     `panels.json` 注册面板（人能打开来用），
     `.mcp.json` 贡献 MCP 服务器（agent 能调用）。
-    三层可以只做一层，也可以全做。
+    另有 `hooks.json`（生命周期钩子）与 `subagents/`（预置子代理）。
+    各层可以只做一层，也可以全做。
   </Step>
-  <Step title="注册进市场">
-    在 `plugins/marketplace.json` 里加一条，应用内的插件市场就能看到它。
-  </Step>
-  <Step title="构建产物并验证">
-    ```bash
-    bun run build:plugins
-    cd apps/sidecar/pi-agent && bun run plugins:pack
-    ```
-
-    面板 HTML 与内置 zip 是构建产物，不入库。
-    `build:sidecar` / `test` / `smoke` 会自动补齐缺失产物。
+  <Step title="装进市场并调试">
+    在市场根放一份 `marketplace.json` 列出你的插件，应用内「插件 → 添加市场」
+    以**目录市场 + 链接安装**加进来——缓存目录指向源码，改文件即时生效
+    （重新开会话或刷新市场即可）。
   </Step>
 </Steps>
 
-设计文档见仓库内 `docs/plugin-system-design.md`。
+清单校验的硬错误（装不上）与软诊断（组件静默为空）见 `docs/plugin-development.md`，
+里面还有技能、MCP、面板、hooks、子代理五类组件的完整字段说明与排障表。
 
 ## 接一个 MCP 服务器
 
-MCP 的接入设计见 `docs/mcp-design.md`。要点：
+要点：
 
 - **多服务器连接池**：多个 MCP 服务器并发连接，互不阻塞；
-- **配置双层合并**：全局配置与工作区配置合并，工作区覆盖全局；
-- **输出防护**：MCP 返回的内容视为不可信输入，注入内容会被隔离标记；
-- **OAuth**：支持需要授权的服务器；
-- **审批与审计**：MCP 工具的调用与其他工具走同一套审批流程，并留下审计记录。
+- **配置三层合并**：系统层 `~/.kova/mcp.json`、工作区标准层 `.mcp.json`、
+  工作区覆盖层 `.kova/mcp.json`，后者覆盖前者；
+- **工具走 `mcp` 网关**：MCP 工具不直接进模型工具表（保护提示词前缀缓存），
+  统一以全名 `<server>__<tool>` 经 `mcp` 网关调用；
+- **输出防护与审批**：MCP 返回内容视为不可信输入，调用走同一套审批流程并留审计记录；
+- **密钥注入**：stdio 服务器的环境变量可绑定到全局密钥，明文不落配置文件，
+  详见[安全与密钥](/features/security)。
 
 插件也可以通过清单里的 `mcpServers` 字段自带 MCP 服务器定义——
 `ui-design` 就是这么做的，agent 因此能直接操作设计画布。
@@ -67,6 +67,8 @@ MCP 的接入设计见 `docs/mcp-design.md`。要点：
 技能放在插件的 `skills/` 目录，或由用户级配置提供。
 技能是装进 agent 上下文的知识包，在设置 → 技能里装载与管理。
 
+一份技能就是一个 `SKILL.md`：`name` 与 `description` 必填，
+`description` 决定**什么时候触发**（写触发场景而不是功能清单）。
 内置的 iOS / Material / 通用移动端设计规范就是以技能形式分发的，
 可通过 `use_skill` 按需加载，而不是一次性全塞进上下文。
 
@@ -81,21 +83,17 @@ MCP 的接入设计见 `docs/mcp-design.md`。要点：
   否则会出现"在 plan 模式里居然能写文件"这类不一致。
 </Warning>
 
-修改权限枚举后记得同步更新
-`docs/permission-modes.md` 里的枚举扩容检查表——
-那不是文档洁癖，是防止枚举与 UI 选项不同步。
-
 ## NDJSON 协议与跨端契约
 
 <Columns cols={2}>
   <Column title="pi-protocol">
-    `packages/pi-protocol` 定义前后端共享的契约。
+    `packages/pi-protocol` 定义跨端共享的契约。
     桌面前端、sidecar、移动端都从这里取类型。
     改协议时改这里，不要在任何一端另写一份。
   </Column>
   <Column title="NDJSON over stdio">
-    桌面宿主与 sidecar 之间的进程协议：一行一个 JSON 对象。
-    业务表的读写走 stdout 上的 host RPC，
+    主进程与 sidecar 之间的进程协议：一行一个 JSON 对象。
+    业务表的读写与密钥解密走 host 桥，
     所以日志与协议在通道上有明确区分。
   </Column>
 </Columns>
@@ -108,16 +106,16 @@ MCP 的接入设计见 `docs/mcp-design.md`。要点：
 这是模板仓库，换成自己的品牌：
 
 ```bash
-./scripts/rename.sh <new-slug> [--app-name "显示名"] [--dry-run]   # macOS / Linux
-scripts\rename.bat <new-slug> [--app-name "Name"] [--dry-run]      # Windows
+./scripts/rename.sh <new-slug> [--app-name "显示名"] [--bundle-id com.x.y] [--dry-run]
 ```
 
-覆盖品牌三形态（slug / Pascal / UPPER）、`pi-desktop` 内部 id、
-Tauri 显示名与 bundle id、`.kova-plugin` 目录名等，改动前自动备份。
+覆盖品牌三形态（slug / Pascal / UPPER）、`electron-builder.yml` 的
+productName / appId、主进程 `main/paths.ts` 里的运行期 identifier 与窗口标题等，
+改动前自动备份。
 
 <Note>
-  改名后记得同步更新 `apps/desktop/src-tauri/tauri.dev.conf.json` 里的
-  identifier——dev 与正式版靠它区分，靠脚本改容易漏。
+  改名后确认 dev 与正式版的 identifier 区分（`com.kova.assistant.dev` /
+  `com.kova.assistant`）仍符合预期——两者数据目录因此隔离，靠脚本改容易漏。
 </Note>
 
 <Card title="下一步" icon="arrow-right" href="/developers/release">

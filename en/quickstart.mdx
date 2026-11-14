@@ -1,52 +1,47 @@
 ---
 title: "Quickstart"
-description: "Prerequisites, installing the desktop app, running from source, and how dev and release data stay separate."
+description: "Requirements, installing the desktop app, running from source, and dev vs production data isolation."
 ---
 
-## Prerequisites
+## Requirements
 
 Running from source needs three things:
 
 | Dependency | Version | Purpose |
 | --- | --- | --- |
-| [Bun](https://bun.sh) | ≥ 1.x | Dependency install and workspace scripts |
-| Rust toolchain | As required by Tauri v2 | Building the desktop host (see the [official prerequisites](https://tauri.app/start/prerequisites/)) |
-| Node.js | LTS | Invokes `next dev` via `node_modules` |
+| [Bun](https://bun.sh) | ≥ 1.x | Dependency installation and workspace scripts |
+| Node.js | ≥ 20 | Build scripts and Electron runtime dependencies |
+| OS | macOS / Windows | The desktop shell currently ships for these two platforms |
 
-## Install and run
+## Install and run the desktop app
 
 <Steps>
-  <Step title="Clone and install">
+  <Step title="Clone and install dependencies">
     ```bash
     git clone https://github.com/xqb0407/kova.git
     cd kova
     bun install
     ```
 
-    This is a workspace repo, so a single install covers `apps/*`,
-    `apps/sidecar/*`, `packages/*`, and `plugins/*`.
+    This is a workspace repo: `bun install` sets up `apps/*`, `apps/sidecar/*`, and
+    `packages/*`. If the Electron binary is missing (common on restricted networks),
+    run `node apps/electron/node_modules/electron/install.js` once.
   </Step>
-  <Step title="Start the desktop app">
-    ```bash
-    bun run tauri:dev
-    ```
-
-    One command brings up three things: the Next dev server with hot reload,
-    incremental Rust compilation, and the agent sidecar process.
-    The first Rust build takes a while; everything after it is incremental.
-  </Step>
-  <Step title="Just the frontend, in a browser">
+  <Step title="Start development mode">
     ```bash
     bun run dev
     ```
 
-    Next only, no Tauri host. The sidecar falls back to local SQLite storage,
-    which is handy for pure UI work.
+    One command brings up all three layers with hot reload: `next dev` for the
+    renderer (:3000, HMR), an esbuild `--watch` build of the main process (Electron
+    restarts itself when `dist/*.cjs` changes), and the agent sidecar. No Rust, no
+    long compile wait.
   </Step>
   <Step title="Configure a model">
-    Open Settings → Models inside the app and add a provider API key. Credentials go
-    to the system keychain rather than to plaintext on disk. On macOS the service name
-    is `com.kova.assistant`.
+    Open Settings → Models and add an API key for a provider. Credentials are encrypted
+    with AES-256-GCM into the local database, with the master key wrapped by the system
+    keychain (safeStorage) — never stored in plaintext. See
+    [Security & keys](/en/features/security).
   </Step>
 </Steps>
 
@@ -54,100 +49,84 @@ Running from source needs three things:
 
 <CodeGroup>
 ```bash Terminal
-# Full Tauri desktop dev loop
-bun run tauri:dev
-
-# Next frontend only
+# Desktop development (renderer + main + sidecar, each hot-reloading)
 bun run dev
 
-# Sidecar unit tests
-bun run test
+# Production builds (three chains, runnable separately)
+bun run build:sidecar    # sidecar → apps/electron/binaries/kova-worker
+bun run build:renderer   # renderer static export → renderer-out
+bun run build:main       # main process / preload → apps/electron/dist
+bun run build && bun run start   # full build and run (no hot reload, like an installed build)
 
-# Build the agent sidecar alone (fills in plugin artifacts first)
-bun run build:sidecar
+# Tests and gates
+bun run test             # sidecar unit tests
+bun run test:desktop     # desktop unit tests
+bun run test:protocol    # protocol unit tests
+bun run verify:goal      # full gate (goal/desktop/protocol/runtime tests + typecheck of three packages)
 
-# Build plugin artifacts (panel HTML + zip bundles)
-bun run build:plugins
-cd apps/sidecar/pi-agent && bun run plugins:pack
-
-# Mobile (start the desktop gateway and allow LAN access first)
+# Mobile (start the desktop remote gateway and allow LAN access first)
 bun run dev:mobile
 bun run typecheck:mobile
 bun run test:mobile
-
-# Static web export → apps/mobile/dist
-bun run build:mobile:web
+bun run build:mobile:web   # web static export → apps/mobile/dist
 ```
 </CodeGroup>
 
-## Smoke test
+## Smoke the sidecar without the UI
 
-You can exercise the sidecar without booting the Rust host:
+The sidecar is a standalone process and can be started on its own for a protocol smoke:
 
 ```bash
 cd apps/sidecar/pi-agent && bun run smoke
 ```
 
-Without the host it falls back to local SQLite storage, which makes this a good way to
-verify protocol handshake, tool registration, and session reads/writes in isolation.
+It starts with the NDJSON protocol on stdin/stdout — useful for checking the protocol
+handshake, tool registration, and session reads/writes. Fuller end-to-end smoke
+(renderer bridge marker, chat, git, remote gateway) lives under
+`apps/electron/scripts/`, run against `--remote-debugging-port`; see the repo README.
 
-## Dev and release data stay separate
+## Dev vs production data isolation
 
-This one bites people, so it gets its own section.
+This is easy to trip over, so it gets its own section.
 
-`bun run tauri:dev` layers `apps/desktop/src-tauri/tauri.dev.conf.json` on top, with the
-identifier `com.kova.assistant.dev` and the display name "扣瓦 Dev". The app data
-directory therefore becomes:
+Dev mode (unpackaged runs, or starting with `--dev`) uses the separate app identifier
+`com.kova.assistant.dev`, shown as "Kova Dev". Its data directory therefore becomes:
 
 ```
 ~/Library/Application Support/com.kova.assistant.dev
 ```
 
-Three consequences follow:
+Three consequences:
 
-- Installing or uninstalling the release build **never touches dev data**, and vice versa;
-- The dev build keeps its master key in `master.dev.key` inside the data directory
-  (this avoids spurious key rotation when the keychain ACL refuses to read after a
-  rebuild), while release builds use the system keychain. The two ciphertexts are
-  mutually unreadable;
-- Because the ciphertexts differ, **you re-enter credentials once** when crossing
-  environments.
+- Installing or uninstalling the production build **does not** touch dev data, and vice versa;
+- The production (packaged) build uses `com.kova.assistant`; the two cannot read each other's ciphertext;
+- For further isolation between multiple instances / e2e runs, override the data directory:
+  `KOVA_DATA_DIR=/tmp/kova-sandbox`.
 
 <Warning>
-  The global `~/.kova/` layer is **intentionally shared** — it is a machine-level
-  configuration layer outside the installer's control, so isolation only happens at the
-  `Application Support` layer.
-
-  Also note that a bare `cargo run` that bypasses the CLI does not inject the dev config
-  and will fall back to the release identifier.
+  The `~/.kova/` global layer is **intentionally shared** — it is the machine-level config
+  layer (memory, subagent definitions, system MCP config, etc.) and not managed by the
+  installer. Isolation only applies to the `Application Support` layer.
 </Warning>
 
-## Common issues
+## FAQ
 
 <AccordionGroup>
-  <Accordion title="A panel won't open, or the plugin artifact is missing">
-    Panel HTML files and built-in plugin zips are **build artifacts and are not
-    committed**. Run `bun run build:plugins` to generate the HTML, then
-    `cd apps/sidecar/pi-agent && bun run plugins:pack` to repack the zips.
-    `build:sidecar`, `test`, and `smoke` all fill in missing artifacts automatically.
-  </Accordion>
-  <Accordion title="Metro reports duplicate React instances on mobile">
-    This is expected. RN 0.86 can only pair with react 19.2.3, while desktop runs
-    Next with react 19.3 — each keeps its own copy. The repo relies on
-    `install.hoistingLimits = "workspaces"` to install mobile dependencies under
-    `apps/mobile/node_modules`, preventing hoisting from raising either version.
-  </Accordion>
-  <Accordion title="I want my own branding">
-    This is a template repo, and rebranding is one command:
+  <Accordion title="Rebranding the app">
+    This is a template repo; rebranding is one command:
     ```bash
-    ./scripts/rename.sh <new-slug> [--app-name "Name"] [--dry-run]
+    ./scripts/rename.sh <new-slug> [--app-name "Display name"] [--bundle-id com.x.y] [--dry-run]
     ```
-    Windows uses `scripts\rename.bat`. It covers all three brand forms
-    (slug / Pascal / UPPER), the internal `pi-desktop` id, the Tauri display name and
-    bundle id, and `.kova-plugin` directory names — and backs everything up first.
+    The script covers the brand's three forms (slug / Pascal / UPPER), the
+    `electron-builder.yml` productName / appId, the runtime identifier and window title
+    in the main process `paths.ts`, and backs up files before changing them.
+  </Accordion>
+  <Accordion title="Port 3000 is taken / pointing at another renderer">
+    Use `KOVA_DEV_URL` for the renderer address, `KOVA_DATA_DIR` for the data directory,
+    and `bun run dev -- --remote-debugging-port=9222` to pass flags through to Electron.
   </Accordion>
 </AccordionGroup>
 
 <Card title="Next" icon="arrow-right" href="/en/features/conversation">
-  See what these capabilities look like in use.
+  See what these capabilities look like in real use.
 </Card>

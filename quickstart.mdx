@@ -10,8 +10,8 @@ description: "环境要求、安装桌面端、从源码跑起来，以及 dev �
 | 依赖 | 版本 | 用途 |
 | --- | --- | --- |
 | [Bun](https://bun.sh) | ≥ 1.x | 依赖安装与工作区脚本 |
-| Rust 工具链 | Tauri v2 所需 | 编译桌面宿主（见 [官方前置指南](https://tauri.app/start/prerequisites/)） |
-| Node.js | LTS | `next dev` 经 `node_modules` 调用 |
+| Node.js | ≥ 20 | 构建脚本与 Electron 运行时依赖 |
+| 操作系统 | macOS / Windows | 桌面壳目前打包这两个平台 |
 
 ## 安装并运行桌面端
 
@@ -24,29 +24,23 @@ description: "环境要求、安装桌面端、从源码跑起来，以及 dev �
     ```
 
     这是一个 workspace 仓库，`bun install` 会同时装好
-    `apps/*`、`apps/sidecar/*`、`packages/*` 与 `plugins/*`。
+    `apps/*`、`apps/sidecar/*` 与 `packages/*`。
+    如果 Electron 二进制缺失（常见于网络受限环境），补跑一次
+    `node apps/electron/node_modules/electron/install.js`。
   </Step>
   <Step title="起桌面端开发模式">
-    ```bash
-    bun run tauri:dev
-    ```
-
-    这一条命令会同时拉起三样东西：Next 开发服务器（带热更新）、
-    Rust 宿主的增量编译、以及 agent sidecar 进程。
-    首次启动 Rust 编译会比较久，之后都是增量。
-  </Step>
-  <Step title="只想在浏览器里调前端">
     ```bash
     bun run dev
     ```
 
-    只跑 Next 前端，不带 Tauri 宿主。此时 sidecar 会回退到本地 SQLite 存储，
-    适合纯 UI 调试。
+    这一条命令会同时拉起三层，各自热更新：渲染层 `next dev`（:3000，HMR）、
+    主进程 esbuild --watch（`dist/*.cjs` 变更后自动重启 Electron）、
+    以及 agent sidecar 进程。没有 Rust、不用等编译。
   </Step>
   <Step title="配置模型">
     在应用内打开设置 → 模型，添加一个供应商的 API Key。
-    凭据写入系统钥匙串，不会落到磁盘明文里。
-    macOS 上的服务名是 `com.kova.assistant`。
+    凭据以 AES-256-GCM 加密落在本机数据库，主密钥由系统钥匙串（safeStorage）包裹，
+    不会明文落盘。详见[安全与密钥](/features/security)。
   </Step>
 </Steps>
 
@@ -54,92 +48,80 @@ description: "环境要求、安装桌面端、从源码跑起来，以及 dev �
 
 <CodeGroup>
 ```bash Terminal
-# 桌面前端开发（Tauri 全流程）
-bun run tauri:dev
-
-# 仅 Next 前端
+# 桌面端开发（渲染层 + 主进程 + sidecar，各自热更）
 bun run dev
 
-# sidecar 单元测试
-bun run test
+# 生产构建（三条链，可分别执行）
+bun run build:sidecar    # sidecar → apps/electron/binaries/kova-worker
+bun run build:renderer   # 前端静态导出 → renderer-out
+bun run build:main       # 主进程 / preload → apps/electron/dist
+bun run build && bun run start   # 全量构建并运行（无热更，等价装机版）
 
-# 单独构建 agent sidecar（自动先补齐插件产物）
-bun run build:sidecar
+# 测试与门禁
+bun run test             # sidecar 单测
+bun run test:desktop     # 桌面端单测
+bun run test:protocol    # 协议单测
+bun run verify:goal      # 全量门禁（goal/桌面/协议/运行时测试 + 三包 typecheck）
 
-# 构建插件产物（面板 HTML + zip 包）
-bun run build:plugins
-cd apps/sidecar/pi-agent && bun run plugins:pack
-
-# 移动端开发（需桌面端先开远程网关并允许局域网访问）
+# 移动端（需桌面端先开远程网关并允许局域网访问）
 bun run dev:mobile
 bun run typecheck:mobile
 bun run test:mobile
-
-# 移动端 web 静态导出 → apps/mobile/dist
-bun run build:mobile:web
+bun run build:mobile:web   # web 静态导出 → apps/mobile/dist
 ```
 </CodeGroup>
 
-## 冒烟测试
+## 不开界面也能验 sidecar
 
-不启动 Rust 宿主也能验证 sidecar：
+sidecar 是独立进程，可以单独拉起来做协议冒烟：
 
 ```bash
 cd apps/sidecar/pi-agent && bun run smoke
 ```
 
-无 Rust 宿主时它会自动回退本地 SQLite 存储，所以这条命令可以单独用来
-检查协议握手、工具注册和会话读写是否正常。
+它会以 stdin/stdout 上的 NDJSON 协议独立启动，用来检查协议握手、工具注册和
+会话读写是否正常。更完整的端到端冒烟（渲染层桥标记、聊天、git、远程网关）
+在 `apps/electron/scripts/` 下，配合 `--remote-debugging-port` 跑，见仓库 README。
 
 ## dev 与正式版的数据隔离
 
 这一点很容易踩坑，所以单独说明。
 
-`bun run tauri:dev` 会叠加 `apps/desktop/src-tauri/tauri.dev.conf.json`，
-identifier 是 `com.kova.assistant.dev`，显示名「扣瓦 Dev」。
-于是应用数据目录变成：
+dev 模式（未打包运行，或带 `--dev` 启动）使用独立的应用标识
+`com.kova.assistant.dev`，显示名「Kova Dev」。于是应用数据目录变成：
 
 ```
 ~/Library/Application Support/com.kova.assistant.dev
 ```
 
-由此得到三个结论：
+三个结论：
 
 - 安装或卸载正式版**不会**动到 dev 的数据，反之亦然；
-- dev 构建的主密钥放在数据目录内的 `master.dev.key`
-  （规避重编译后钥匙串 ACL 拒读导致的误轮换），正式版走系统钥匙串，
-  两者密文互不可读；
-- 因为密文不同，**跨环境首次使用需要重输一次凭据**。
+- 正式（打包版）走 `com.kova.assistant`，两者密文互不可读；
+- 想在多实例 / e2e 之间进一步隔离，用环境变量覆盖数据目录：
+  `KOVA_DATA_DIR=/tmp/kova-sandbox`。
 
 <Warning>
-  `~/.kova/` 全局层是**有意共用**的——它是机器级的配置层，不归安装器管辖，
-  所以隔离只发生在 `Application Support` 这一层。
-
-  另外，绕过 CLI 的裸 `cargo run` 不会注入 dev 配置，会落回正式版 identifier。
+  `~/.kova/` 全局层是**有意共用**的——它是机器级的配置层（记忆、子代理定义、
+  MCP 系统层配置等），不归安装器管辖，所以隔离只发生在 `Application Support`
+  这一层。
 </Warning>
 
 ## 常见问题
 
 <AccordionGroup>
-  <Accordion title="面板打不开 / 提示找不到插件产物">
-    UI 面板的单文件 HTML 与内置插件包 zip 都是**构建产物、不入库**的。
-    跑一次 `bun run build:plugins` 生成面板 HTML，
-    再 `cd apps/sidecar/pi-agent && bun run plugins:pack` 重打 zip。
-    `build:sidecar`、`test`、`smoke` 都会自动补齐缺失的产物。
-  </Accordion>
-  <Accordion title="移动端 Metro 报双 React 实例">
-    这是预期行为。RN 0.86 只能配 react 19.2.3，与桌面的 Next + react 19.3 各持一份。
-    仓库通过 `install.hoistingLimits = "workspaces"` 把移动端依赖装在
-    `apps/mobile/node_modules`，避免 hoisting 互相抬版本。
-  </Accordion>
   <Accordion title="想换成自己的品牌">
     这是模板仓库，改品牌一条命令：
     ```bash
-    ./scripts/rename.sh <new-slug> [--app-name "显示名"] [--dry-run]
+    ./scripts/rename.sh <new-slug> [--app-name "显示名"] [--bundle-id com.x.y] [--dry-run]
     ```
-    Windows 用 `scripts\rename.bat`。脚本覆盖品牌三形态（slug / Pascal / UPPER）、
-    内部 id `pi-desktop`、Tauri 显示名与 bundle id、`.kova-plugin` 目录名等，
-    改动前会自动备份。
+    脚本覆盖品牌三形态（slug / Pascal / UPPER）、
+    `electron-builder.yml` 的 productName / appId、主进程 `paths.ts` 里的运行期
+    identifier 与窗口标题等，改动前会自动备份。
+  </Accordion>
+  <Accordion title="端口 3000 被占 / 想连另一个渲染层">
+    用 `KOVA_DEV_URL` 指定渲染层地址，`KOVA_DATA_DIR` 换数据目录，
+    `bun run dev -- --remote-debugging-port=9222` 透传参数给 Electron。
   </Accordion>
 </AccordionGroup>
 

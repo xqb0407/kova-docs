@@ -45,10 +45,10 @@ keywords:
     </div>
 
     <div className="kov-trust">
-      <span>Tauri v2 原生窗口</span>
+      <span>Electron 原生窗口</span>
       <span>本地 sidecar 运行时</span>
       <span>MCP 多服务器接入</span>
-      <span>Expo 移动端</span>
+      <span>IM 渠道与移动端</span>
     </div>
 
     <div className="kov-cue" aria-hidden="true"><span /></div>
@@ -106,14 +106,14 @@ keywords:
           <h3 className="kov-card__title">数据与凭据不经过中间服务器</h3>
           <p className="kov-card__body">
             会话、记忆、子代理定义与 MCP 配置写在 <code>~/.kova/</code> 和工作区的
-            <code>.kova/</code> 里。API Key 交给系统钥匙串，
-            macOS 上的服务名是 <code>com.kova.assistant</code>。
+            <code>.kova/</code> 里。API Key 以 AES-256-GCM 加密落在本机数据库，
+            主密钥由系统钥匙串（safeStorage）包裹。
             你随时可以打开目录，看它到底存了什么。
           </p>
           <div className="kov-card__meta">
             <span className="kov-chip">~/.kova/</span>
-            <span className="kov-chip">Keychain</span>
-            <span className="kov-chip">rusqlite</span>
+            <span className="kov-chip">safeStorage</span>
+            <span className="kov-chip">AES-256-GCM</span>
           </div>
         </div>
       </div>
@@ -277,7 +277,8 @@ keywords:
         <div className="kov-panel__body">
           <code>workspace-write</code> 档<b style={{ color: "var(--kov-accent)" }}>管不住 bash</b>
           ——命令可以通过 shell 写到工作区之外的任何位置。这是有意的取舍，
-          <code>docs/permission-modes.md</code> 里有专门章节说明，不是设计疏漏。
+          <a href="/features/modes">模式总览</a>与<a href="/features/sandbox">沙箱</a>
+          页里有专门章节说明，不是设计疏漏。
           真正需要隔离时请用沙箱或容器。
         </div>
       </div>
@@ -406,7 +407,7 @@ keywords:
     <span className="kov-eyebrow">Feature tour</span>
     <h2 className="kov-h2">功能详解</h2>
     <p className="kov-lede">
-      十个主题，每个都有完整的设计文档——从会话工作区到提示词缓存，点击进入。
+      每个主题都有完整的设计文档——从会话工作区到远程访问与 IM 渠道，点击进入。
     </p>
 
     <div className="kov-bento" style={{ marginTop: "2.6rem" }}>
@@ -470,7 +471,7 @@ keywords:
         <div className="kov-bezel__core">
           <div className="kov-card__kicker">09</div>
           <h3 className="kov-card__title">远程与移动端</h3>
-          <p className="kov-card__body">配对码换 token、三种网络接入、Expo 移动 App 与安全边界。</p>
+          <p className="kov-card__body">配对码换 token、四种网络接入、SSH 远程项目、Expo 移动 App 与安全边界。</p>
         </div>
       </a>
       <a className="kov-bezel" href="/features/agent-engine" style={{ gridColumn: "span 6", display: "block" }}>
@@ -478,6 +479,20 @@ keywords:
           <div className="kov-card__kicker">10</div>
           <h3 className="kov-card__title">Agent 引擎</h3>
           <p className="kov-card__body">回合生命周期、内置工具表、上下文压缩与长期记忆。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/im-channels" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">11</div>
+          <h3 className="kov-card__title">IM 双向通道</h3>
+          <p className="kov-card__body">微信 / 飞书 / 钉钉 / 企微机器人接入：会话绑定、owner 门与回复颗粒度。</p>
+        </div>
+      </a>
+      <a className="kov-bezel" href="/features/security" style={{ gridColumn: "span 6", display: "block" }}>
+        <div className="kov-bezel__core">
+          <div className="kov-card__kicker">12</div>
+          <h3 className="kov-card__title">安全与密钥</h3>
+          <p className="kov-card__body">API Key 加密存储、工具输出脱敏、MCP 密钥注入边界。</p>
         </div>
       </a>
     </div>
@@ -489,7 +504,8 @@ keywords:
     <h2 className="kov-h2">会给你打开来用的工作台</h2>
     <p className="kov-lede">
       插件不只是一段提示词，而是能真正操作的界面。关键在于产物是结构化数据——
-      agent 改的是同一份文档，不是给你看一张图。
+      agent 改的是同一份文档，不是给你看一张图。这三个工作台由官方插件仓库提供，
+      在应用内「插件 → 添加市场」安装。
     </p>
 
     <div className="kov-bento kov-bento--trio">
@@ -541,7 +557,7 @@ keywords:
   {/* ============ ARCHITECTURE ============ */}
   <section className="kov__wrap kov__section kov-rv">
     <span className="kov-eyebrow">Architecture</span>
-    <h2 className="kov-h2">四层结构</h2>
+    <h2 className="kov-h2">三层结构</h2>
     <p className="kov-lede">
       把 agent 拆成独立进程是有意的：长任务不拖垮界面，界面崩溃不打断活儿，
       多端复用同一份运行时。详见 <a href="/developers/architecture">架构总览</a>。
@@ -553,11 +569,11 @@ keywords:
           <i /><i /><i /><span>repo map</span>
         </div>
         <div className="kov-panel__body">
-          <pre><code>{`apps/desktop      Next.js + assistant-ui 会话界面，Tauri v2 宿主
-apps/sidecar     pi-agent 运行时（Bun/TS），NDJSON over stdio
-apps/mobile      Expo SDK 57 + RN 0.86，经桌面网关 /ws 接入
-packages         pi-protocol 跨端契约 · shared
-plugins          office · canvas · ui-design · marketplace.json`}</code></pre>
+          <pre><code>{`apps/desktop      Next.js + assistant-ui 会话界面（渲染层）
+apps/electron     Electron 主进程与 preload：窗口/终端/文件/通知/托盘/IM/远程网关
+apps/sidecar      pi-agent 运行时（bun 单文件二进制），NDJSON over stdio
+apps/mobile       Expo 移动端，经桌面网关 /ws 接入
+packages          pi-protocol 跨端契约 · pi-runtime 会话运行时 · pi-sandbox 沙箱边界`}</code></pre>
         </div>
       </div>
     </div>
@@ -568,7 +584,7 @@ plugins          office · canvas · ui-design · marketplace.json`}</code></pre
     <span className="kov-eyebrow">Get started</span>
     <h2 className="kov-h2">五分钟跑起来</h2>
     <p className="kov-lede">
-      需要 <a href="https://bun.sh">Bun</a>、Rust 工具链与 Node.js。
+      需要 <a href="https://bun.sh">Bun</a> 与 Node.js ≥ 20（macOS / Windows）。
       完整说明见 <a href="/quickstart">快速开始</a>。
     </p>
 
@@ -581,7 +597,7 @@ plugins          office · canvas · ui-design · marketplace.json`}</code></pre
           <pre><code>{`git clone https://github.com/xqb0407/kova.git
 cd kova
 bun install
-bun run tauri:dev`}</code></pre>
+bun run dev`}</code></pre>
         </div>
       </div>
     </div>

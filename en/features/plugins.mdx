@@ -1,13 +1,64 @@
 ---
 title: "Plugins & workspaces"
-description: "Skill loading, the panel system, the local marketplace, and the bundled office / canvas / ui-design workspaces."
+description: "Plugin markets (directory / git), skill loading, the panel system, and the office / canvas / ui-design workspaces from the official plugin repository."
 ---
 
 Kova's extensibility comes in three layers: **tools** (what the agent can call),
 **skills** (how the agent knows to do something), and **panels** (a UI a human can
 open). A plugin can supply any combination of them.
 
-## The bundled workspaces
+## What a plugin is
+
+**One directory plus one manifest** (`.kova-plugin/plugin.json`). The directory can hold
+five kinds of components:
+
+| Component | Manifest field | Purpose |
+| --- | --- | --- |
+| Skills | `skills` | Reusable methodology for the agent, triggered by `description` |
+| MCP servers | `mcpServers` | A tool surface for the agent (external systems, analyses, …) |
+| Panels | `panels` | Interactive UI in the right-side panel, bindable to workspace documents |
+| Hooks | `hooks` | Commands run on agent lifecycle events (can block) |
+| Subagents | `subagents` | Preset subagent definitions (invoked with `@`) |
+
+## Where plugins come from: markets
+
+Plugins do **not** live in the main repo; they are installed through markets. Add a
+market in the app via "Plugins → Add marketplace", then install statements from it.
+Two kinds:
+
+<Columns cols={2}>
+  <Column title="Directory market">
+    Reads a local directory directly. Installation can be **linked** — the cache points
+    at your source, so edits take effect immediately. Best for local development and
+    private distribution.
+  </Column>
+  <Column title="Git market">
+    Shallow-clones to the local disk; refreshing re-clones. Best for public distribution:
+    push → refresh the market → update the plugin.
+  </Column>
+</Columns>
+
+A market is "a directory containing `marketplace.json`" listing its plugins:
+
+```json
+{
+  "name": "my-plugins",
+  "displayName": "My plugins",
+  "plugins": [
+    { "name": "my-plugin", "source": "./plugins/my-plugin",
+      "description": "One line about it", "category": "Productivity" }
+  ]
+}
+```
+
+After installation, a plugin is materialized into the app data directory
+`plugins/cache/<marketplaceId>/<name>/` (a symlink to the source when installed linked).
+A whole-package enabled switch controls all components; after install/uninstall/enable
+changes, skills and subagents hot-reload, the MCP pool rebuilds, and panel lists update.
+
+## The workspaces
+
+The official plugin repository ships three workspaces through the market:
 
 ### Office
 
@@ -22,124 +73,104 @@ open). A plugin can supply any combination of them.
   </Column>
 </Columns>
 
-Export goes through `pptxgenjs` and `exceljs`.
-
 ### Canvas
 
 An Excalidraw-style infinite space: text, shapes, images, Mermaid, tables, charts, and
 embedded web pages placed freely, exportable as one SVG. The agent collaborates on
-`<name>.canvas.json` — meaning the canvas contents are structured data, not a picture,
-which is precisely why the agent can actually edit it.
+`<name>.canvas.json`.
 
 ### UI Design
 
-A Figma-style page / artboard / layer tree with a full property inspector (fills,
-gradients, strokes, radii, shadows, type). Documents are standalone `*.uidesign.json`.
+A Figma-style page / artboard / layer tree plus a full property inspector. This plugin
+goes one step further: it ships its own `.mcp.json` defining an MCP server, so the agent
+can **drive the canvas directly through MCP tools** — add, edit, delete nodes, align,
+distribute, stack, and group. It bundles three design-spec skills (iOS, Material, and
+general mobile).
 
-This one goes further than the others: it ships its own `.mcp.json`, so the agent can
-**drive the canvas through MCP tools** — adding, editing, and deleting nodes, aligning,
-distributing, stacking, and grouping. Three design-system skill packs (iOS, Material, and
-a generic mobile set) ship for `use_skill` to load.
+## How the agent uses plugins
 
-## How the agent uses a plugin
-
-What lets a plugin do real work rather than just show more screenshots is that
-**its output is structured data**.
+The reason a plugin lets the agent actually do work — rather than hand you more
+screenshots — is that **its output is structured data**.
 
 <Columns cols={2}>
-  <Column title="If the agent can edit it, it is a workspace">
-    A Canvas board is `<name>.canvas.json`, a deck is `.deck.canvas.json`, a
-    spreadsheet is `.sheet.univer.json`, a design file is `.uidesign.json`. The agent
-    edits those JSON documents and the UI renders them — so it can add a shape or change
-    a cell style, rather than only redrawing the whole thing for you to look at.
+  <Column title="Editable output is the point">
+    Canvas documents are `<name>.canvas.json`, slides are `.deck.canvas.json`,
+    spreadsheets are `.sheet.univer.json`. The agent edits those JSON documents and the UI
+    renders them — so it can add a shape or change a cell style instead of redrawing a
+    picture for you.
   </Column>
-  <Column title="The human sees the result, the agent holds the data">
-    You open a panel to inspect and nudge; the agent keeps working on the same document.
-    Both are views of one file, so there is no screenshot round-trip to confirm what
-    happened.
+  <Column title="Humans see it, agents get data">
+    You open the panel to review and tweak; the agent keeps working on the same JSON.
+    Both sides see different views of the same document, with no screenshot ping-pong.
   </Column>
 </Columns>
 
-Each of the three layers engages differently:
+Each of the three layers has its own trigger:
 
 <CodeGroup>
-```text 工具 / Tool
-直接出现在工具表里，模型可以像调用 read 一样调用它。
-Applies as an ordinary tool the model can select.
+```text Tool
+Appears directly in the tool table; the model calls it like `read`.
 
-技能 / Skill
-通过 use_skill 按需装载到上下文，而不是常驻——
-避免每轮都背着三套设计规范。
-Loaded on demand via use_skill instead of always resident.
+Skill
+Loaded on demand into context via `use_skill` rather than always resident —
+otherwise every turn would carry three sets of design specs.
 
-面板 / Panel
-agent 可以用 open_plugin_panel 主动打开某个面板，把结果摆到你面前。
-The agent can open a panel itself via open_plugin_panel.
+Panel
+The agent can open a panel itself via `open_plugin_panel` and put the result in front of you.
 ```
 </CodeGroup>
 
 <Note>
-  `ui-design` takes one step further by shipping its own `.mcp.json`, so the agent drives
-  canvas nodes through MCP tools — add, edit, delete, align, distribute, stack, and
-  group all become parameterised calls. That is far more reliable than having the model
-  emit a large JSON blob and hoping it parses, and it is the argument for the "a plugin
-  ships its own MCP server" path.
+  MCP tools are **not** registered as individual tools in the model tool table (that would
+  break prompt prefix caching). They are called through a resident `mcp` gateway with the
+  full name convention `<server>__<tool>`. So plugin skills should spell out the full name
+  and the JSON-string `args` form instead of a bare tool name.
 </Note>
 
 ## Skills
 
-A skill is a knowledge pack loaded into the agent's context. Skills are loaded and
-managed under Settings → Skills, and plugins contribute them via the manifest's `skills`
-field. The three design-system packs in UI Design are distributed exactly this way.
+A skill is a knowledge pack loaded into the agent's context: no code, just "when this kind
+of task comes up, follow these steps". Each skill is a `SKILL.md` whose `name` and
+`description` are required — `description` decides **when it triggers**, so write trigger
+scenarios, not a feature list. Skills are managed in Settings → Skills, and plugins can
+contribute them via the manifest's `skills` field.
 
-## Local marketplace
+## Panels
 
-`plugins/marketplace.json` is the repo's marketplace manifest, installable from the in-app
-plugin marketplace. Plugins live under `plugins/` and are described by
-`.kova-plugin/plugin.json`.
+Panels are interactive HTML contributed to the right-side panel. The host mounts them in
+an iframe and talks over a postMessage bridge (`kova-ui-plugin/1`), so a panel can read and
+write the workspace document bound to it.
 
-<CodeGroup>
-```json plugin.json
-{
-  "name": "office",
-  "version": "0.2.0",
-  "description": "Office suite: slides + spreadsheets",
-  "author": { "name": "Kova" },
-  "category": "Productivity",
-  "icon": "icon.svg",
-  "keywords": ["office", "slides", "pptx", "univer"],
-  "skills": "skills",
-  "panels": "panels.json",
-  "mcpServers": ".mcp.json"
-}
-```
-</CodeGroup>
+Four entry points, all the same tab:
 
-Optional manifest fields combine as you like: `skills/` contributes skills,
-`panels.json` registers panels, and `mcpServers` contributes an MCP server.
-
-## About build artifacts
+1. The panel list in the right panel's "+" menu;
+2. "Open in panel" on a file artifact card (matched by the `opens` glob);
+3. The agent calling the `open_plugin_panel` tool;
+4. **Auto-open on first write**: the first time the agent's `write`/`edit` hits a panel's
+   `opens` glob, the host opens that panel and binds the file.
 
 <Warning>
-  Panel HTML files (`plugins/<name>/<name>.html`) and built-in plugin zips are **build
-  artifacts and are not committed**. Generate them once after cloning, or panels will
-  not open:
-
-  ```bash
-  bun run build:plugins                                # generate panel HTML
-  cd apps/sidecar/pi-agent && bun run plugins:pack     # repack built-in zips
-  ```
-
-  `build:sidecar`, `test`, and `smoke` fill in missing artifacts automatically, but run
-  the commands by hand the first time. `build:plugins` accepts `--force` to rebuild.
+  Panels run in an opaque-origin sandbox (`blob:` URL): `localStorage` / `cookie` are
+  unavailable, relative-path assets do not load, all CSS/JS must be inlined, and the
+  entry file is capped at 32 MiB. Panels must declare permissions
+  (`document` / `export` / `agent` / `notify`); messages using undeclared capabilities are
+  dropped.
 </Warning>
 
-## Related settings surfaces
+## Distribution
 
-Beyond the workspaces above, settings include sections for MCP servers, skills, subagent
-definitions, computer control, observability, usage statistics with heatmaps, and
-backup and restore.
+The old mechanism that bundled plugin packages inside the app is gone: plugins are always
+installed through a market — directory markets for local development and private
+distribution, git markets for public distribution. Installation copies the plugin directory
+(or links it to the source); source is the artifact, so no packaging chain is needed.
 
-<Card title="Want to write your own plugin?" icon="code" href="/en/developers/extending">
-  The developer docs cover the manifest shape, directory conventions, and build flow.
+## Trust boundary
+
+Installing a plugin that ships an MCP server = running its code with your permissions on
+your machine. The host only accepts standard MCP fields, and tool calls still go through
+the [approval levels](/en/features/modes) and approval policy. Try plugins in an isolated
+directory first; do not install unknown third-party plugins into a production setup.
+
+<Card title="Want to write a plugin?" icon="code" href="/en/developers/extending">
+  The developer docs cover the manifest format, directory conventions, and debugging.
 </Card>

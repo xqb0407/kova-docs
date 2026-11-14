@@ -9,8 +9,9 @@ with file locking and crash recovery.
 
 <Note>
   The scheduler is vendored from `@amaster.ai/pi-task-scheduler` (Apache-2.0). A few
-  things were changed locally, one of which affects behaviour: the scheduler lifecycle
-  is owned by the sidecar itself, and the scheduler tools' scope was widened from
+  things were changed locally, one of which affects behaviour: the scheduler runs as its
+  own process supervised by the main process (`kova-automation`), and trigger requests are
+  forwarded to the sidecar for execution; the scheduler tools' scope was widened from
   "the current session" to **app level** — automations are an app-level asset, visible
   across sessions.
 </Note>

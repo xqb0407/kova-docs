@@ -10,34 +10,39 @@ description: "已落地的能力、正在推进的移动端与远程能力增强
 <CardGroup cols={2}>
   <Card title="桌面主应用" icon="check">
     多轮对话、附件、@ 提及、检查点回溯、提示词排队、
-    模型选择器、斜杠命令、语音输入。
+    模型选择器、斜杠命令、语音输入、记忆条目化、自定义智能体、目标模式。
   </Card>
   <Card title="pi-agent sidecar 运行时" icon="check">
     MCP 接入、技能装载、子代理调度、长期记忆、上下文压缩、
-    内置编码 / 浏览器 / HTTP / 截图工具。
+    内置编码 / 浏览器 / HTTP / 截图工具与视觉辅助。
   </Card>
-  <Card title="插件系统与办公套件" icon="check">
-    面板系统与本地市场；office、canvas、ui-design 三个工作台。
+  <Card title="插件系统与工作台" icon="check">
+    目录 / git 双市场、技能 / MCP / 面板 / hooks / 子智能体五类组件；
+    office、canvas、ui-design 三个工作台（官方插件仓库）。
   </Card>
-  <Card title="凭据与系统集成" icon="check">
-    Keychain / 凭据管理、Webhook 通知、定时任务、外观主题。
+  <Card title="IM 双向通道" icon="check">
+    微信 / 飞书 / 钉钉 / 企业微信机器人双向接入，
+    会话绑定、owner 门、四档回复颗粒度。
   </Card>
-  <Card title="局域网远程访问" icon="check">
-    桌面网关 + 配对码 + 浏览器网页端。
+  <Card title="凭据与安全" icon="check">
+    API Key 加密存储、工具输出脱敏、MCP 密钥注入；
+    定时任务、Webhook 通知、外观主题。
+  </Card>
+  <Card title="远程访问" icon="check">
+    桌面网关 + 配对码 + 浏览器网页端；内置 Cloudflare 一键隧道、Tailscale、
+    SSH 远程项目。
   </Card>
   <Card title="移动 App" icon="check">
-    Expo + React Native，走同一 WS 网关；扫码配对，
-    token 存 Keychain / Keystore。
+    Expo + React Native，走同一 WS 网关；扫码配对换 token。
   </Card>
 </CardGroup>
 
 ## 推进中：移动 App
 
-原生壳已经落地（Expo，不是 Tauri mobile——复用桌面网关的 `/ws` 协议，
-与浏览器网页端同源）。剩下的是移动场景真正需要的东西：
+原生壳已经落地（Expo，复用桌面网关的 `/ws` 协议，与浏览器网页端同源）。
+剩下的是移动场景真正需要的东西：
 
-- **推送通知**：任务完成、等待审批、定时任务结果到达手机。
-  这需要网关侧的设备令牌登记与前台保活；
+- **推送通知**：任务完成、等待审批、定时任务结果到达手机；
 - **生物识别解锁 + token 轮换**：当前 token 长效不过期，
   撤销只能靠桌面端「撤销所有设备」；
 - **离线草稿与弱网体验**：蜂窝 / Wi-Fi 切换下的排队发送与在飞流续播；
@@ -50,7 +55,6 @@ description: "已落地的能力、正在推进的移动端与远程能力增强
 - **端到端加密**：配对后协商密钥，WS 流量桌面端加密，
   云端（隧道 / 中继）零明文；
 - **稳定公网接入**：摆脱临时隧道地址，支持固定域名与自动重连；
-- **断线与恢复**：WS 断线期间的消息补拉、重连后的会话状态对齐；
 - **多设备并发**：桌面 + 多个远端同时在线的输入仲裁与视图同步；
 - **远程审批**：危险操作确认推送到已配对设备，手机上放行。
 
@@ -58,7 +62,8 @@ description: "已落地的能力、正在推进的移动端与远程能力增强
 
 <CardGroup cols={2}>
   <Card title="发布矩阵" icon="tag">
-    macOS / Windows 双平台代码签名与自动更新。
+    macOS / Windows 代码签名与公证、自动更新通道
+    （当前 macOS 为 ad-hoc 深签，未公证）。
   </Card>
   <Card title="性能迭代" icon="gauge">
     冷启动速度与长会话内存占用。

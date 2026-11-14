@@ -64,7 +64,8 @@ The sidecar registers roughly these categories:
 | Network | `WebFetch` `WebSearch` | Fetch and search |
 | Browser | browser toolset | Configured by `browser-config.ts` |
 | HTTP | HTTP toolset | Provided by `http-tools.ts` |
-| Images | `screenshot` `generate_image` `echo_image` | Capture, generate, echo — with mirroring and config caching |
+| Images | `screenshot` `generate_image` `see_image` | Capture, generate, and vision assistance (`see_image` lets text-only models inspect images on demand; off by default) |
+| Knowledge | `kb_read` `kb_search` | Knowledge source retrieval and reads |
 | Interaction | `Question` | The agent asks the user, driving a question flow |
 | Panels | `open_plugin_panel` `open_file` | Open a workspace panel or a file |
 
@@ -87,14 +88,15 @@ implementation phase.
 
 ## Approval level: whether it must ask
 
-<CardGroup cols={4}>
-  <Card title="ask">write / edit / bash / config tools — every single one asks.</Card>
-  <Card title="workspace-write">Inside the workspace and listed writable roots needs no approval; bash still asks, with "remember this class of command" support.</Card>
-  <Card title="auto-edit">Writes and edits are fully auto-approved, including outside the workspace; bash still asks.</Card>
-  <Card title="auto">Everything auto-approved.</Card>
-</CardGroup>
+| Level | Behaviour |
+| --- | --- |
+| `ask` | write / edit / bash / config tools — every single one asks |
+| `workspace-write` | Inside the workspace and listed writable roots needs no approval; bash still asks, with "remember this class of command" support |
+| `auto-edit` | Writes and edits are fully auto-approved (including outside the workspace); bash still asks |
+| `review` | No card: the model judges risk per call — low risk runs, high risk is blocked; a failed review falls back to a card |
+| `auto` | Everything auto-approved |
 
-Those four are the complete set (the level is an enum, not a tunable; `Shift+Tab` cycles
+Those five are the complete set (the level is an enum, not a tunable; `Shift+Tab` cycles
 through them).
 
 ### The approval card's three buttons
@@ -133,8 +135,9 @@ has no third button and simply says the approval is for this one time.
   grants write access to a directory you did not approve manually.
 
   To be straightforward about one thing: `workspace-write` **does not contain bash**.
-  A command can reach any path outside the workspace through the shell. This has its own
-  section in `docs/permission-modes.md` — it is a deliberate trade-off, not an oversight.
+  A command can reach any path outside the workspace through the shell. The
+  [Modes overview](/en/features/modes) and [Sandbox](/en/features/sandbox) pages cover
+  this in their own sections — it is a deliberate trade-off, not an oversight.
 </Warning>
 
 ### The writable-root list (directories that need no approval outside the workspace)
@@ -193,7 +196,7 @@ Definitions live in `~/.kova/subagents` (machine-wide) or `<workspace>/.kova/sub
 (committable, shared with your team), both managed under Settings → Subagents. Discovery has
 three layers: built-in, user-defined, and plugin-provided. Subagent activity is
 persisted, so a long job survives a restart
-(see `docs/subagent-activity-persistence-design.md`).
+(see [Subagents](/en/features/subagents)).
 
 ## Scheduled tasks and unattended runs
 

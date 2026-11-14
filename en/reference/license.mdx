@@ -18,16 +18,17 @@ the `LICENSE` file at the repository root.
 ## Main dependencies
 
 This project stands on the shoulders of the following (the full list lives in each
-package's `package.json` and `Cargo.toml`):
+package's `package.json` and `THIRD-PARTY-NOTICES.md`):
 
 | Layer | Projects |
 | --- | --- |
-| Runtime & packaging | [Bun](https://bun.sh) · [Tauri v2](https://tauri.app) · [Next.js](https://nextjs.org) · [React](https://react.dev) |
+| Runtime & packaging | [Bun](https://bun.sh) · [Electron](https://www.electronjs.org/) · [Next.js](https://nextjs.org) · [React](https://react.dev) |
+| Mobile | [Expo](https://expo.dev) · [React Native](https://reactnative.dev) |
 | Conversation UI | [assistant-ui](https://assistant-ui.com) · [Vercel AI SDK](https://ai-sdk.dev) · [Streamdown](https://streamdown.ai) · [Radix UI](https://radix-ui.com) / [shadcn/ui](https://ui.shadcn.com) · [lucide-react](https://lucide.dev) · [framer-motion](https://motion.dev) · [cmdk](https://cmdk.paco.me) |
 | Agent runtime | [pi-agent-core / pi-ai](https://www.npmjs.com/package/@earendil-works/pi-agent-core) · [Model Context Protocol SDK](https://github.com/modelcontextprotocol) · [croner](https://github.com/Hexagon/croner) |
 | Editor & terminal | [CodeMirror 6](https://codemirror.net) · [xterm.js](https://xtermjs.org) |
 | Office plugins | [Univer](https://univer.ai) · [LeaferJS](https://www.leaferjs.com) · [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) · [exceljs](https://exceljs.dev) · [jszip](https://stuk.github.io/jszip/) |
-| Data & state | [zustand](https://zustand.docs.pmnd.rs) · [zod](https://zod.dev) · [Recharts](https://recharts.org) · [rusqlite](https://github.com/rusqlite/rusqlite) · [keyring](https://github.com/hwchen/keyring-rs) · [axum](https://github.com/tokio-rs/axum) |
+| Data & state | [zustand](https://zustand.docs.pmnd.rs) · [zod](https://zod.dev) · [Recharts](https://recharts.org) · [node:sqlite](https://nodejs.org/api/sqlite.html) / [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) · Electron [safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) |
 | 3D & visual effects | [Three.js](https://threejs.org) / [@react-three/fiber](https://r3f.docs.pmnd.rs) |
 | CJK typefaces | [Lxgw WenKai](https://github.com/lxgw/LxgwWenKai) · [Noto Sans/Serif SC](https://fonts.google.com/noto) · [Geist](https://vercel.com/geist) · [Inter](https://rsms.me/inter/) · [JetBrains Mono](https://www.jetbrains.com/mono/) |
 
@@ -37,7 +38,7 @@ Kova borrows and depends heavily on community work, from architecture down to de
 Special thanks:
 
 <AccordionGroup>
-  <Accordion title="assistant-ui and the Tauri community">
+  <Accordion title="assistant-ui and the Electron community">
     They respectively carry the conversational UI and the cross-platform desktop
     runtime. Their issue trackers and documentation are the first place many hard
     questions in this repository get answered.
