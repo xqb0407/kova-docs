@@ -192,6 +192,7 @@
                 "icon": "bolt",
                 "pages": [
                   "features/conversation",
+                  "features/checkpoints",
                   "features/inbox",
                   "features/agent-engine",
                   "features/memory",
@@ -218,7 +219,10 @@
                   "features/library",
                   "features/im-channels",
                   "features/remote-mobile",
-                  "features/git-worktrees"
+                  "features/git-worktrees",
+                  "features/vision",
+                  "features/projects",
+                  "features/browser"
                 ]
               },
               {
@@ -432,6 +436,7 @@
                 "icon": "bolt",
                 "pages": [
                   "en/features/conversation",
+                  "en/features/checkpoints",
                   "en/features/inbox",
                   "en/features/agent-engine",
                   "en/features/memory",
@@ -458,7 +463,10 @@
                   "en/features/library",
                   "en/features/im-channels",
                   "en/features/remote-mobile",
-                  "en/features/git-worktrees"
+                  "en/features/git-worktrees",
+                  "en/features/vision",
+                  "en/features/projects",
+                  "en/features/browser"
                 ]
               },
               {

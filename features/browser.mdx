@@ -1,0 +1,46 @@
+---
+title: "浏览器控制"
+description: "内置浏览器面板：Agent 经 CDP 可信输入与结构化 DOM 快照操作网页，动作在面板中实时可见，下载落本机。"
+---
+
+Agent 可以驱动内置浏览器面板操作网页——**动作在面板里实时可见**，
+你看得到它点了什么、填了什么。开关在 设置 → 智能体配置 → 电脑控制 → 浏览器驱动。
+
+## 能力
+
+<Columns cols={2}>
+  <Card title="可信输入">
+    click / type / press / hover / scroll / select / check / drag——
+    每种输入走对应的人类级事件链，而不是一锅端 synthetic 点击。
+  </Card>
+  <Card title="结构化 DOM 快照">
+    每次重建的快照带 accessible name/value/checked/disabled、
+    CSS selector 与 rect——Agent 拿到的是结构，不是截图猜谜。
+  </Card>
+  <Card title="evaluate / wait_for / state / dialog">
+    页面内执行 JS、条件等待、读取页面状态、处理对话框。
+  </Card>
+  <Card title="活页面截图">
+    Page.captureScreenshot 直接拍面板里的活页面——登录态与滚动位置
+    与你看到的完全一致。
+  </Card>
+</Columns>
+
+## 工程细节（为什么它稳）
+
+- **CDP-on-guest**：懒 attach、空闲释放、开 DevTools 前先 detach、崩溃先
+  detach——调试和 Agent 互不干扰；
+- `<webview>` guest 绑定 + **属主会话校验**：后台会话/子代理抢不走
+  前台页面；
+- 导航重定向按成功处理；取消链路完整，`browser:viewport` 事件同步视口；
+- fill/fixed 视口：CSS 尺寸即视口，截图与快照坐标系一致。
+
+## 权限与下载
+
+- **权限白名单**：站点权限在面板内询问，你记录过的站点不再重复问；
+- **下载**落 `<appData>/browser-downloads/`，不散落在下载文件夹里。
+
+<Note>
+  ACP 模式（编辑器拉起）下浏览器工具不注册——面板是桌面 UI 专属。
+  纯文本模型配合像素截图/see_image 使用，见[视觉辅助](/features/vision)。
+</Note>

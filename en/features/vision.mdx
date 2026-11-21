@@ -1,0 +1,50 @@
+---
+title: "Vision assist"
+description: "Let text-only models "see" images: the model calls see_image with a question, off by default, with zero prompt pollution."
+---
+
+Some models don't accept image input. Without vision assist, they genuinely
+can't see: user-attached images are blocked, and screenshot results are
+invisible to them.
+
+**Vision assist** turns seeing into a **tool** (`see_image`) instead of
+automatic narration: the model decides when to look and what to ask — one
+question-driven recognition is cheaper and more accurate than blind
+description, and the result lands in the transcript as an ordinary tool
+result (visible across refreshes and compaction).
+
+## The chain (when enabled)
+
+1. For text-only models, image blocks in requests are replaced with
+   placeholder text carrying an `imageId`:
+   `[image attached | source=browser_shot | imageId=img_ab12cd34 | ... call see_image(...) to inspect it.]`
+   — the id is the first 12 hex chars of the image's SHA256:
+   content-addressed and stable across requests;
+2. The model calls `see_image(imageId?, question?)`;
+3. The tool looks up the original image by hash in the current session
+   (the latest one when no id is passed) and runs a one-shot recognition
+   with a vision model;
+4. The text result enters the transcript as a tool result — the **original
+   image is untouched**, so visibility restores automatically when you switch
+   back to a vision-capable model.
+
+## The switch & zero prompt pollution
+
+Settings → Models → Vision assist, **off by default**. When off:
+
+- `see_image` is not registered (the tool list is byte-identical to before);
+- No placeholder substitution happens (requests stay byte-identical);
+- The system prompt never mentions the tool.
+
+## Vision model selection (high to low priority)
+
+1. **Manual pick in settings** — only models with configured credentials,
+   not hidden, declaring image input; invalid picks fall back automatically;
+2. `PI_VISION_MODEL=provider/modelId` env escape hatch;
+3. **Auto-pick** among configured, visible, image-input, non-text-to-image
+   models.
+
+<Note>
+  Pairs best with [browser control](/en/features/browser) pixel screenshots:
+  the agent takes a web page shot, then asks about it via see_image.
+</Note>
