@@ -1,0 +1,57 @@
+---
+title: "Memory & persona"
+description: "A global persona plus two-scope file memory: budgeted injection, line-level retrieval, version history and trash, and three memory tiers for subagents."
+---
+
+The agent's "remembering you" is two things: the **persona** (who it is and
+how it talks) and **memory** (what it remembers). Everything lives in local
+files — open them, read them, edit them by hand at any time.
+
+## Persona
+
+One global `~/.kova/soul.md` (persona) + `rules.md` (standing rules), read
+from disk in real time:
+
+- Edit in settings; saving hot-swaps into active sessions, no restart;
+- Structured fields (how to address you, tone) are managed separately from
+  the free-form text.
+
+## Memory: two scopes
+
+| Scope | Location | Purpose |
+| --- | --- | --- |
+| Global | `~/.kova/memory/` | Long-term preferences and facts across projects |
+| Workspace | `<cwd>/.kova/memory/` | Project-specific conventions (more specific, injected first) |
+
+- Memory is markdown files; a session injects both scopes with the workspace
+  first;
+- Injection is budgeted: 4K per file, 12K total, with middle truncation for
+  oversized files — memory can grow without blowing up the context window.
+
+## Retrieval & maintenance
+
+- **`memory_search`**: the agent can retrieve memory lines by keyword when it
+  needs an old fact;
+- **Version history**: every memory file has a `.history/` — changes are
+  reviewable;
+- **Trash**: deleted memories go to `.trash/`, not deleted for real;
+- **Timestamped appends**: new entries are stamped automatically.
+
+## Subagent memory tiers
+
+Every subagent definition declares its memory tier:
+
+| Tier | Behavior |
+| --- | --- |
+| `none` | No memory at all — a pure executor |
+| `private` | Workspace-local `<cwd>/.kova/agent-memory/`, treated as an intermediate artifact |
+| `shared` | Shares the main memory |
+
+The five-dimension capability declaration ("undeclared = unreachable") plus
+memory tiers keep subagent boundaries clear and controllable.
+
+<Note>
+  Writes are redacted; identity files (persona/memory) are deliberately kept
+  out of the git repository — the agent has full write access to the repo,
+  and a persona in the repo could be rewritten by any session or PR.
+</Note>
