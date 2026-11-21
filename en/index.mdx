@@ -42,6 +42,7 @@ description: "A desktop AI assistant that runs on your own machine — native wi
     </div>
 
     <div className="kov-trust">
+      <span>v1.2.0 · Apache-2.0 open source</span>
       <span>Electron native window</span>
       <span>Local sidecar runtime</span>
       <span>Multi-server MCP</span>
@@ -51,40 +52,21 @@ description: "A desktop AI assistant that runs on your own machine — native wi
     <div className="kov-cue" aria-hidden="true"><span /></div>
   </section>
 
-  {/* ============ RECREATED APP UI ============ */}
+  {/* ============ REAL APP ============ */}
   <section className="kov__wrap" style={{ paddingBottom: "1rem" }}>
-    <div className="kov-app kov-rv">
-      <div className="kov-app__bar">
-        <i /><i /><i /><span className="kov-app__name">Kova · Living-room lights</span>
-      </div>
-      <div className="kov-app__win kov-app__hero">
-        <div className="kov-app__side">
-          <div className="kov-app__nav is-on">+ 新对话</div>
-          <div className="kov-app__nav">自动化</div>
-          <div className="kov-app__nav">插件 / 专家 / 技能</div>
-          <div className="kov-app__nav">我的文件</div>
-          <div className="kov-app__tag">任务 / 项目</div>
-          <div className="kov-app__item is-on">Lighting scene debug <small>2h</small></div>
-          <div className="kov-app__item">Weekend cleaning script <small>1d</small></div>
-          <div className="kov-app__item">Monthly report template <small>3d</small></div>
-        </div>
-        <div className="kov-app__main kov-app__chat">
-          <div className="kov-app__bubble is-user">Dim the living-room lights to 30% and pull together an energy report.</div>
-          <div className="kov-app__tool"><b>Ran</b> light-scene write · living room → 30%</div>
-          <div className="kov-app__bubble">
-            Done — both living-room groups are at 30%. The energy report is in the right panel, and I added a 7am schedule for tomorrow.
-          </div>
-          <div className="kov-app__composer">Describe a task, @mention an agent, /open the command menu</div>
-        </div>
-        <div className="kov-app__panel">
-          <h5>Device state</h5>
-          <div className="kov-app__row"><span>Living room</span><b>30%</b></div>
-          <div className="kov-app__row"><span>Balcony</span><b>0%</b></div>
-          <div className="kov-app__row"><span>Sensors</span><b>3 在线</b></div>
-          <div className="kov-app__row"><span>Schedules</span><b>2 条</b></div>
-        </div>
+    <div className="kov-bezel kov-rv">
+      <div className="kov-bezel__core" style={{ padding: 0 }}>
+        <img
+          src="/assets/home.png"
+          alt="Kova main window: task list, streaming conversation and model picker"
+          style={{ width: "100%", display: "block" }}
+        />
       </div>
     </div>
+    <p className="kov-lede" style={{ marginTop: "1.4rem", textAlign: "center" }}>
+      The real interface — task list, streaming conversation and model picker,
+      all running on your machine.
+    </p>
   </section>
 
   {/* ============ THREE CHOICES ============ */}
@@ -371,52 +353,72 @@ description: "A desktop AI assistant that runs on your own machine — native wi
   <section className="kov__wrap kov__section kov-rv">
     <span className="kov-eyebrow">Interface</span>
     <h2 className="kov-h2">From setup to stats, all on your own machine</h2>
-    <div className="kov-shots">
-      <div className="kov-app kov-app--solo">
-        <div className="kov-app__bar"><i /><i /><i /><span className="kov-app__name">New chat</span></div>
-        <div className="kov-app__win">
-          <div className="kov-app__side">
-            <div className="kov-app__nav is-on">+ New chat</div>
-            <div className="kov-app__nav">Automations</div>
-            <div className="kov-app__nav">Plugins / Experts / Skills</div>
-            <div className="kov-app__nav">My files</div>
-          </div>
-          <div className="kov-app__main kov-app__chat">
-            <p className="kov-app__sub">Pick a direction, or just say what you need.</p>
-            <div className="kov-app__chips">
-              <span className="kov-app__chip">Inspiration</span>
-              <span className="kov-app__chip">Writing</span>
-              <span className="kov-app__chip">Code</span>
-              <span className="kov-app__chip">Analysis</span>
-              <span className="kov-app__chip">Plugins</span>
-            </div>
-            <div className="kov-app__composer">Describe a task, @mention an agent, /open the command menu</div>
-          </div>
+
+    <div className="kov-bento">
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/plugin-market.png"
+            alt="Plugin & skill marketplace: 33 installable plugins"
+            style={{ width: "100%", display: "block" }}
+          />
         </div>
       </div>
-      <div className="kov-app kov-app--solo">
-        <div className="kov-app__bar"><i /><i /><i /><span className="kov-app__name">Settings · Usage</span></div>
-        <div className="kov-app__win">
-          <div className="kov-app__side">
-            <div className="kov-app__nav">Models</div>
-            <div className="kov-app__nav">Credentials</div>
-            <div className="kov-app__nav">MCP servers</div>
-            <div className="kov-app__nav is-on">Usage</div>
-            <div className="kov-app__nav">Observability</div>
-            <div className="kov-app__nav">Backup</div>
-          </div>
-          <div className="kov-app__main">
-            <h5 style={{ margin: "0 0 0.7rem", fontSize: "0.9rem" }}>Token activity</h5>
-            <div className="kov-app__bar-chart">
-              <span style={{ height: "38%" }} /><span style={{ height: "62%" }} />
-              <span style={{ height: "45%" }} /><span style={{ height: "88%" }} />
-              <span style={{ height: "54%" }} /><span style={{ height: "72%" }} />
-              <span style={{ height: "96%" }} />
-            </div>
-            <div className="kov-app__row" style={{ marginTop: "0.8rem" }}><span>Total tokens</span><b>1.28M</b></div>
-            <div className="kov-app__row"><span>Cache hit rate</span><b>86%</b></div>
-          </div>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/automations.png"
+            alt="Automations: scheduled tasks and templates"
+            style={{ width: "100%", display: "block" }}
+          />
         </div>
+      </div>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/knowledge-base.png"
+            alt="Knowledge base: AI-native libraries"
+            style={{ width: "100%", display: "block" }}
+          />
+        </div>
+      </div>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/subagents.png"
+            alt="Subagents: built-in Explorer / Code-reviewer / Test-runner / Fixer"
+            style={{ width: "100%", display: "block" }}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="kov-bento" style={{ marginTop: "1rem" }}>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/trace-view.png"
+            alt="Trace view: span waterfall for agent / LLM / tool calls"
+            style={{ width: "100%", display: "block" }}
+          />
+        </div>
+        <p className="kov-card__meta" style={{ padding: "0.9rem 1.1rem 0.5rem" }}>
+          <span className="kov-chip">Trace view</span>
+          A span waterfall for agent / LLM / tool calls with per-round timing.
+        </p>
+      </div>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/context-usage.png"
+            alt="Context usage and cache hit rate"
+            style={{ width: "100%", display: "block" }}
+          />
+        </div>
+        <p className="kov-card__meta" style={{ padding: "0.9rem 1.1rem 0.5rem" }}>
+          <span className="kov-chip">Context usage</span>
+          Capacity, composition breakdown and cache hit rate, with one-click compaction.
+        </p>
       </div>
     </div>
   </section>

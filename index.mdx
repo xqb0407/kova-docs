@@ -45,6 +45,7 @@ keywords:
     </div>
 
     <div className="kov-trust">
+      <span>v1.2.0 · Apache-2.0 开源</span>
       <span>Electron 原生窗口</span>
       <span>本地 sidecar 运行时</span>
       <span>MCP 多服务器接入</span>
@@ -54,40 +55,20 @@ keywords:
     <div className="kov-cue" aria-hidden="true"><span /></div>
   </section>
 
-  {/* ============ RECREATED APP UI ============ */}
+  {/* ============ REAL APP ============ */}
   <section className="kov__wrap" style={{ paddingBottom: "1rem" }}>
-    <div className="kov-app kov-rv">
-      <div className="kov-app__bar">
-        <i /><i /><i /><span className="kov-app__name">扣瓦 · 客厅灯光助手</span>
-      </div>
-      <div className="kov-app__win kov-app__hero">
-        <div className="kov-app__side">
-          <div className="kov-app__nav is-on">+ 新对话</div>
-          <div className="kov-app__nav">自动化</div>
-          <div className="kov-app__nav">插件 / 专家 / 技能</div>
-          <div className="kov-app__nav">我的文件</div>
-          <div className="kov-app__tag">任务 / 项目</div>
-          <div className="kov-app__item is-on">灯光场景调试 <small>2 小时</small></div>
-          <div className="kov-app__item">周末清洁脚本 <small>1 天</small></div>
-          <div className="kov-app__item">月度报表模板 <small>3 天</small></div>
-        </div>
-        <div className="kov-app__main kov-app__chat">
-          <div className="kov-app__bubble is-user">把客厅的灯调到 30%，顺手生成一份能耗报告。</div>
-          <div className="kov-app__tool"><b>已执行</b> 灯光场景写入 · 客厅灯组 → 30%</div>
-          <div className="kov-app__bubble">
-            已经调好了：客厅两组灯都到 30%。能耗报告在右侧面板，另外把明早 7 点的定时也加上了。
-          </div>
-          <div className="kov-app__composer">输入任务指令 @选择智能体，/打开指令菜单</div>
-        </div>
-        <div className="kov-app__panel">
-          <h5>设备状态</h5>
-          <div className="kov-app__row"><span>客厅灯组</span><b>30%</b></div>
-          <div className="kov-app__row"><span>阳台灯组</span><b>0%</b></div>
-          <div className="kov-app__row"><span>传感器</span><b>3 在线</b></div>
-          <div className="kov-app__row"><span>定时任务</span><b>2 条</b></div>
-        </div>
+    <div className="kov-bezel kov-rv">
+      <div className="kov-bezel__core" style={{ padding: 0 }}>
+        <img
+          src="/assets/home.png"
+          alt="扣瓦主界面：任务列表、流式会话与模型选择"
+          style={{ width: "100%", display: "block" }}
+        />
       </div>
     </div>
+    <p className="kov-lede" style={{ marginTop: "1.4rem", textAlign: "center" }}>
+      真实界面 —— 任务列表、流式会话与模型选择，全部跑在本机。
+    </p>
   </section>
 
   {/* ============ THREE CHOICES ============ */}
@@ -352,52 +333,72 @@ keywords:
   <section className="kov__wrap kov__section kov-rv">
     <span className="kov-eyebrow">Interface</span>
     <h2 className="kov-h2">从配置到统计，都在你自己的机器上</h2>
-    <div className="kov-shots">
-      <div className="kov-app kov-app--solo">
-        <div className="kov-app__bar"><i /><i /><i /><span className="kov-app__name">新对话</span></div>
-        <div className="kov-app__win">
-          <div className="kov-app__side">
-            <div className="kov-app__nav is-on">+ 新对话</div>
-            <div className="kov-app__nav">自动化</div>
-            <div className="kov-app__nav">插件 / 专家 / 技能</div>
-            <div className="kov-app__nav">我的文件</div>
-          </div>
-          <div className="kov-app__main kov-app__chat">
-            <p className="kov-app__sub">选个方向，或者直接说事。</p>
-            <div className="kov-app__chips">
-              <span className="kov-app__chip">灵感</span>
-              <span className="kov-app__chip">写作</span>
-              <span className="kov-app__chip">写代码</span>
-              <span className="kov-app__chip">分析</span>
-              <span className="kov-app__chip">插件</span>
-            </div>
-            <div className="kov-app__composer">输入任务指令 @选择智能体，/打开指令菜单</div>
-          </div>
+
+    <div className="kov-bento">
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/plugin-market.png"
+            alt="插件 / 技能市场：33 个可安装插件"
+            style={{ width: "100%", display: "block" }}
+          />
         </div>
       </div>
-      <div className="kov-app kov-app--solo">
-        <div className="kov-app__bar"><i /><i /><i /><span className="kov-app__name">设置 · 使用统计</span></div>
-        <div className="kov-app__win">
-          <div className="kov-app__side">
-            <div className="kov-app__nav">模型</div>
-            <div className="kov-app__nav">凭据</div>
-            <div className="kov-app__nav">MCP 服务器</div>
-            <div className="kov-app__nav is-on">使用统计</div>
-            <div className="kov-app__nav">可观测性</div>
-            <div className="kov-app__nav">备份与归档</div>
-          </div>
-          <div className="kov-app__main">
-            <h5 style={{ margin: "0 0 0.7rem", fontSize: "0.9rem" }}>Token 活动</h5>
-            <div className="kov-app__bar-chart">
-              <span style={{ height: "38%" }} /><span style={{ height: "62%" }} />
-              <span style={{ height: "45%" }} /><span style={{ height: "88%" }} />
-              <span style={{ height: "54%" }} /><span style={{ height: "72%" }} />
-              <span style={{ height: "96%" }} />
-            </div>
-            <div className="kov-app__row" style={{ marginTop: "0.8rem" }}><span>累计 Token</span><b>128.4 万</b></div>
-            <div className="kov-app__row"><span>缓存命中率</span><b>86%</b></div>
-          </div>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/automations.png"
+            alt="自动化：定时任务与模板"
+            style={{ width: "100%", display: "block" }}
+          />
         </div>
+      </div>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/knowledge-base.png"
+            alt="资料库：AI-Native 知识库"
+            style={{ width: "100%", display: "block" }}
+          />
+        </div>
+      </div>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/subagents.png"
+            alt="子智能体：内置 Explorer / Code-reviewer / Test-runner / Fixer"
+            style={{ width: "100%", display: "block" }}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="kov-bento" style={{ marginTop: "1rem" }}>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/trace-view.png"
+            alt="链路追踪：Agent / LLM / 工具调用的 span 瀑布图"
+            style={{ width: "100%", display: "block" }}
+          />
+        </div>
+        <p className="kov-card__meta" style={{ padding: "0.9rem 1.1rem 0.5rem" }}>
+          <span className="kov-chip">链路追踪</span>
+          Agent / LLM / 工具调用的 span 瀑布图，逐轮耗时一目了然。
+        </p>
+      </div>
+      <div className="kov-bezel">
+        <div className="kov-bezel__core" style={{ padding: 0 }}>
+          <img
+            src="/assets/context-usage.png"
+            alt="上下文用量与缓存命中率"
+            style={{ width: "100%", display: "block" }}
+          />
+        </div>
+        <p className="kov-card__meta" style={{ padding: "0.9rem 1.1rem 0.5rem" }}>
+          <span className="kov-chip">上下文用量</span>
+          容量占比、构成明细与缓存命中率，一键压缩。
+        </p>
       </div>
     </div>
   </section>

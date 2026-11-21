@@ -3,6 +3,27 @@ title: "Quickstart"
 description: "Requirements, installing the desktop app, running from source, and dev vs production data isolation."
 ---
 
+## Install the desktop app (recommended)
+
+No source build needed — grab the official installers from GitHub Releases:
+
+| Platform | Download |
+| --- | --- |
+| macOS (Apple Silicon) | [Kova_1.2.0_arm64.dmg](https://github.com/xqb0407/kova/releases/download/v1.2.0/Kova_1.2.0_arm64.dmg) |
+| Windows (x64) | [Kova_1.2.0_x64-setup.exe](https://github.com/xqb0407/kova/releases/download/v1.2.0/Kova_1.2.0_x64-setup.exe) |
+
+SHA256 checksums (`SHA256SUMS-macos.txt` / `SHA256SUMS-windows.txt`) are on the
+same page.
+
+- **macOS**: ad-hoc signed — if Gatekeeper blocks the first launch,
+  right-click the app → "Open"
+- **Windows**: unsigned — when SmartScreen warns, choose
+  "More info → Run anyway"
+
+After installing, configure one model key in the app and start chatting. The
+source-build path below is for contributing code or rebranding for your own
+distribution.
+
 ## Requirements
 
 Running from source needs three things:

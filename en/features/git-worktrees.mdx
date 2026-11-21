@@ -1,0 +1,53 @@
+---
+title: "Git worktrees (managed)"
+description: "Workspace isolation for parallel agent sessions: one managed worktree per task, uncommitted changes follow, and one click turns work into a branch."
+---
+
+When multiple agent sessions share one working directory: file changes leak
+into each other's context, the git index contends, branch switches interfere.
+Managed worktrees solve this with **worktree-per-task** — an isolated working
+tree per task. Entry point: **Settings → Worktree**.
+
+## What it does
+
+<Columns cols={2}>
+  <Card title="Create managed worktrees from trusted repos">
+    Choose a baseline: the default branch, a specific branch, or the current
+    branch **including uncommitted changes**.
+  </Card>
+  <Card title="Unified managed root">
+    Stored under `<appData>/worktrees` by default (kv `worktrees.root` is
+    configurable), with a registry recording each worktree's metadata.
+  </Card>
+  <Card title="Session ↔ worktree binding">
+    Open a session inside a worktree — agent tools and the sandbox work
+    natively, no extra configuration.
+  </Card>
+  <Card title="Uncommitted changes follow">
+    Tracked diff applied + untracked files copied; `.worktreeinclude`
+    semantics: ignored files copied per the manifest, symlinks skipped,
+    existing files never overwritten, and `AGENTS.override.md` is included
+    automatically.
+  </Card>
+</Columns>
+
+## Wrapping up and cleanup
+
+Two ways to finish, both from the settings page:
+
+- **"Create branch"**: pin the worktree's content as a `kova/<slug>` branch —
+  the work is preserved;
+- **"Delete"**: the whole directory moves to trash (kept, restorable), and
+  trash is **auto-cleaned after 7 days**; restore from the list with one
+  click if you deleted by mistake.
+
+The settings page groups worktrees by repository: create, open a session,
+create branch, delete, restore, empty trash. The app also sweeps stale
+worktrees once at startup.
+
+<Note>
+  Reference semantics: the managed-worktrees shape used by mainstream coding
+  agents. Implementation is covered by a real main-process smoke run
+  (`bun run smoke:worktrees`) and unit tests
+  (`apps/electron/test/git-worktrees.test.ts`).
+</Note>

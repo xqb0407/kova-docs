@@ -1,0 +1,46 @@
+---
+title: "Git Worktree（受管工作树）"
+description: "并行 Agent 会话的工作区隔离：每个任务一个受管 worktree，未提交改动跟随，收尾一键固定成分支。"
+---
+
+多个 Agent 会话共用一个工作目录时：文件改动互相泄漏进对方上下文、git 索引
+争抢、分支切换互相干扰。受管工作树用 **worktree-per-task** 解决——
+每个任务一个独立工作树，互不打扰。这是并行 Agent 会话的主流形态，
+入口在 **设置 → Worktree**。
+
+## 能做什么
+
+<Columns cols={2}>
+  <Card title="从受信仓库创建受管 worktree">
+    可选基线：默认分支、指定分支，或当前分支**连同未提交改动**。
+  </Card>
+  <Card title="受管根统一存放">
+    默认 `<appData>/worktrees`（kv `worktrees.root` 可改），
+    注册表记录每个工作树的元数据。
+  </Card>
+  <Card title="会话 ↔ worktree 绑定">
+    在 worktree 里开会话，Agent 工具与沙箱天然可用，不用额外配置。
+  </Card>
+  <Card title="未提交改动跟随">
+    tracked diff apply + untracked 文件拷贝；`.worktreeinclude` 语义：
+    ignored 文件按清单拷贝、跳过 symlink、不覆盖已存在、
+    自动带上 `AGENTS.override.md`。
+  </Card>
+</Columns>
+
+## 收尾与清理
+
+干完活有两种结束方式，都从设置页操作：
+
+- **「创建分支」**：把工作树内容固定成 `kova/<slug>` 分支，成果不丢；
+- **「删除」**：整个目录进 trash（保留可恢复），trash **7 天自动清理**；
+  误删了从列表里一键恢复。
+
+设置页按仓库分组管理：新建、开新会话、创建分支、删除、恢复、清空 trash。
+应用启动时还会自动清扫一次失效工作树。
+
+<Note>
+  参照语义：主流编码 agent 的 managed worktrees 形态。
+  实现上有真实主进程冒烟（`bun run smoke:worktrees`）与单测覆盖
+  （`apps/electron/test/git-worktrees.test.ts`）。
+</Note>
