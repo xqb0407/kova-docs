@@ -1,0 +1,45 @@
+---
+title: "Library"
+description: "An AI-native local file library: import files, save notes, tag them — the agent reaches everything via @ mentions and knowledge retrieval. Files are the single source of truth."
+---
+
+The library is the agent's local material store: put documents, notes and
+reference material into one unified directory, and the agent reaches them via
+**@ mentions** and **knowledge retrieval**. The core principle in one line:
+**files are the single source of truth** — titles and tags are just a
+rebuildable metadata layer.
+
+## Shape
+
+- The library root is configurable (default inside the app data directory);
+  multiple knowledge-base dimensions are supported (a global library plus
+  per-workspace ones);
+- Content = files you import + Markdown written by "save as note" inside the
+  app;
+- Paths are strictly constrained inside the library root (symlink escape
+  protection).
+
+## Daily operations
+
+| Operation | Notes |
+| --- | --- |
+| Import files | Drag in or pick files to enter the library |
+| Save as note | Write a piece of text as in-library Markdown; duplicate names get numbered Finder-style |
+| Title & tags | Metadata managed separately from the file; the @ picker picks up retitled entries **immediately** |
+| Move / delete | Moves keep tags; in-app deletion cleans up metadata |
+| Reference check | Inspect in-library references so renames and moves never leave dead links |
+| File watching | The library root is watched — files changed or restored externally get their tags back automatically |
+
+## How the agent uses it
+
+- **@ mentions**: type `@` in the composer to pull an entry into context;
+- **Knowledge retrieval**: the agent has a dedicated retrieval tool ranked by
+  recent-use ∪ recent-modified, scored across title/tags/name/path;
+- The ranking is **one shared pure function** used by both the renderer and
+  the sidecar — what you see in the UI is exactly what the agent gets.
+
+## Relation to backup
+
+The library is on the backup "optional" list — tick it and the library
+content travels inside the `.piabk` archive. See
+[Backup & restore](/en/features/backup).

@@ -215,6 +215,7 @@
                   "features/plugins",
                   "features/automation",
                   "features/acp",
+                  "features/library",
                   "features/im-channels",
                   "features/remote-mobile",
                   "features/git-worktrees"
@@ -224,7 +225,8 @@
                 "group": "安全与密钥",
                 "icon": "shield-halved",
                 "pages": [
-                  "features/security"
+                  "features/security",
+                  "features/backup"
                 ]
               }
             ]
@@ -453,6 +455,7 @@
                   "en/features/plugins",
                   "en/features/automation",
                   "en/features/acp",
+                  "en/features/library",
                   "en/features/im-channels",
                   "en/features/remote-mobile",
                   "en/features/git-worktrees"
@@ -462,7 +465,8 @@
                 "group": "Security & keys",
                 "icon": "shield-halved",
                 "pages": [
-                  "en/features/security"
+                  "en/features/security",
+                  "en/features/backup"
                 ]
               }
             ]
