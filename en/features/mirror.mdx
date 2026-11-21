@@ -1,0 +1,41 @@
+---
+title: "Access boost"
+description: "Direct GitHub connections are the default; ghproxy-style mirrors and custom rules are an explicit choice. Credential-carrying requests and git push never touch a third party."
+---
+
+Access boost keeps WebFetch and git smooth on restricted networks.
+**The default is empty = direct connections** — no third-party mirror sees
+your traffic unless you opt in (Settings → System → Access boost).
+
+## Rewrite rules
+
+| Host | Scope |
+| --- | --- |
+| File hosts like `raw.githubusercontent.com` | Whole-site rewrite (maximum benefit, no side effects) |
+| `github.com` | **Download paths only** (`/releases/download/`, `/archive/`, `/raw/`) — repo pages load fine on most networks, and detouring through a mirror is often slower |
+
+Mirror shape is the ghproxy family: `prefix + original URL`. Switching
+providers is a settings change, not a code change.
+
+## Credential protection (hard boundary)
+
+- Credential-carrying URLs are **never rewritten**: private-repo raw links
+  (`?token=…`), userinfo forms and credential query params go direct;
+- Requests with `Authorization` / `Cookie` headers are never rewritten;
+- **git push never goes through a mirror** — write credentials can't traverse
+  one and shouldn't be sent to a third party; SSH remotes are unaffected by
+  design.
+
+## How to enable
+
+- **Settings → System → Access boost**: pick a ghproxy-family mirror or add
+  custom `from → to` rules (custom rules win over the built-in ones);
+- Distributors can set a default prefix before launch with
+  `PI_GITHUB_MIRROR` (invalid/empty = no rewriting);
+- The master switch skips the whole rewrite path.
+
+<Note>
+  Mirrors are third-party public services: availability and returned content
+  are their operators' responsibility. Custom rules also send traffic to the
+  address you type — evaluate before use.
+</Note>

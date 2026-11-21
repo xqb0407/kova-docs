@@ -1,0 +1,42 @@
+---
+title: "Events & headless"
+description: "Automations beyond schedules: webhooks, file changes, git commits and IM messages drive runs; closing the window keeps the tray alive."
+---
+
+Automations used to be schedule-only. **Event triggers** extend them:
+a Webhook request, a file change, a git commit or an IM message can drive an
+automation run — and closing the main window keeps everything running
+(tray-resident headless).
+
+## Four trigger sources
+
+| Source | Protection |
+| --- | --- |
+| **Webhook POST** | HMAC signature + time window + idempotency + rate limit |
+| **File changes** | watcher on configured paths |
+| **git commits** | HEAD polling |
+| **IM messages** | IM-channel bypass (speak in a DingTalk/Feishu/WeCom group to trigger) |
+
+## The one architectural decision that matters
+
+**Triggers are just another way of "reaching the scheduled time".** Execution
+still goes through the same `PersistentTaskScheduler` (separate scheduler
+process) — concurrency gates, run history, catch-up and the single-instance
+lock come for free. Triggers add no second execution path, hence no second
+set of semantics to maintain.
+
+## Headless (tray-resident)
+
+Closing the window ≠ quitting: while tray-resident, the scheduler and
+triggers keep working, and an arriving webhook still fires. Two explicit
+boundaries:
+
+- **No login autostart** — like VS Code: it runs when you open it and stays
+  resident while running;
+- **No separate daemon** — it depends on the Electron main process being
+  alive (a standalone process is a v2 discussion).
+
+## Managing triggers
+
+Triggers attach to automation tasks: each task can carry multiple triggers
+(`webhook | file | git | im`), enabling/disabling takes effect immediately.

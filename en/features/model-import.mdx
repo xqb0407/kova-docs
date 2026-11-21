@@ -1,0 +1,47 @@
+---
+title: "Model import & discovery"
+description: "One-click migration from ZCode / Codex / OpenCode / CC switchers; gateways' /models endpoints auto-discover and register models."
+---
+
+Switching tools is annoying mostly because of model reconfiguration. Kova
+provides **one-click import**: it scans the local configs of other AI tools
+and turns their baseUrl / API / key / model lists into Kova custom services.
+
+## Import sources
+
+| Source | What is read |
+| --- | --- |
+| **ZCode** | `provider_config.json` providerRules (plaintext api-keys) |
+| **Codex** | auth.json and config |
+| **OpenCode** | provider entries in its config |
+| **CC switchers** | claude/codex/opencode multi-slot configs |
+
+Scanning is **purely local**: parsers only read those tools' own config files;
+encrypted credential forms (like `enc:v1:`) are neither read nor decryptable —
+only plaintext keys are picked up. Every imported entry can be edited or
+discarded.
+
+## Dynamic model discovery (autoDiscover)
+
+Custom gateways usually self-report their model list at `/models`. With
+autoDiscover enabled:
+
+- `/models` and `/v1/models` are **raced**, first non-empty wins;
+- Capability fields are parsed from the gateway's self-report: context
+  window, output cap, input modalities, thinking levels;
+- **Merge is append-only**: AUTO models only fill missing ids and never
+  overwrite your hand-written model parameters;
+- **Cache is per provider** (6h freshness) bound to a config fingerprint —
+  changing the endpoint or account invalidates and re-discovers; failures
+  cool down for 10 minutes;
+- Bare arrays / `{data:[...]}` / `{models:[...]}` responses are all accepted;
+  one bad row only drops that row; image/embedding outputs are not
+  registered.
+
+## Privacy & safety
+
+- The import scan only reads **other tools' config files on your own
+  machine**; nothing is uploaded;
+- Saved keys go through the unified encrypted credential table
+  (AES-256-GCM + system keychain);
+- autoDiscover only talks to **the baseUrl you configured** — no middleman.
