@@ -1,5 +1,4 @@
 .mintlify/
 node_modules/
 .DS_Store
-# 真实截图：含项目名与内部内容，不要进仓库（站上已改用 HTML 还原界面）
-assets/
+# assets/ 已入库：2026-11-21 起首页改用真实界面截图（内容已确认可公开）
