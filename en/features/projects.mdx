@@ -1,0 +1,48 @@
+---
+title: "Projects"
+description: "One project, multiple code roots: frontend and backend repos, shared libraries under one project card — every conversation shares the same attached context."
+---
+
+A "project" is more than a working directory — it can be **one main directory
+plus several additional code roots**. Frontend and backend repos, shared
+libraries and scaffolding merge under one project card, and every conversation
+in the project shares the same attached context (instructions, skills, file
+retrieval, write permissions).
+
+## Terms
+
+| Term | Meaning |
+| --- | --- |
+| Main directory | The project's identity — usually the session cwd and the sidebar card key |
+| Additional root | A code root merged into the project beyond the main directory |
+| Project ownership | Which main directory a session belongs to — sessions opened in additional roots roll up to it |
+| Effective dirs | The additional roots the current session actually gets (excluding the cwd itself) |
+
+## Merge rules
+
+- cwd = main directory → all additional roots;
+- cwd = an additional root → main directory + the other roots;
+- **Exact path matching**: sessions opened in a subdirectory of a root don't
+  auto-join — add that subdirectory itself as a root to merge it;
+- Unconfigured directories can be absorbed: after adding `backend` as a root
+  of `frontend`, sessions in `backend` roll up to the `frontend` project card.
+
+## Attached context
+
+Each additional root injects:
+
+- Instruction files (first non-empty of `AGENTS.md` → `CLAUDE.md` →
+  `.claude/CLAUDE.md`);
+- Skill directories (`.kova/skills`, `.agents/skills`, `.claude/skills`);
+- File-retrieval scope and write-permission roots.
+
+## Storage & safety
+
+Config lives in local SQLite kv (`pi.projectDirs`) and is **deliberately not
+stored in the repository** — the config injects instructions and retrieval
+paths, so following git would mean cloning someone's repo injects
+instructions into your agent. That's an unacceptable default. The trade-off:
+team members don't share the same virtual directories automatically
+(sharing needs an explicit trust-confirmed mechanism).
+
+Manage from the project card's "⋯" menu → directory management.

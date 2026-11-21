@@ -1,0 +1,33 @@
+---
+title: "Checkpoints & rollback"
+description: "Every tool call and file change becomes a checkpoint: shadow git-dir, reverse patches on file, and you can always step back."
+---
+
+You don't have to trust the agent after it edits files — every call and file
+change in a session is recorded as a **checkpoint**, and you can always step
+back to any of them.
+
+## How it works
+
+- **Shadow git-dir**: checkpoints don't touch your `.git` — they live in a
+  separate shadow directory (content-hash-derived names, LRU cap of 20,
+  reuse for identical trees). Your repo history stays clean; the agent's
+  trial and error leaves no trace;
+- **Reverse patches**: each change is stored as a reverse patch — rollback is
+  `apply -R`, landing exactly before the change;
+- **Per-file granularity**: roll back a single file instead of reverting a
+  whole round.
+
+## Interaction
+
+- Every checkpoint is visible in the session — click to see what changed;
+- Restoring from a checkpoint: files return to that state and the agent
+  continues from there;
+- `git-changed` events keep the UI in sync with the real repository state.
+
+## Relation to change review
+
+Combined with the [unified inbox](/en/features/inbox), a finished round of
+changes can enter "review" — read the diff first, then accept or roll back
+(v1.1 roadmap). Today, checkpoints already cover the core need: stepping
+back, any time.

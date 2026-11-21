@@ -1,0 +1,53 @@
+---
+title: "Browser control"
+description: "The built-in browser panel: the agent drives pages over CDP with trusted input and structured DOM snapshots — every action visible in the panel, downloads land locally."
+---
+
+The agent can drive the built-in browser panel — **every action is visible in
+real time**: you see what it clicks and types. Toggle: Settings → Agent
+config → Computer control → Browser driver.
+
+## Capabilities
+
+<Columns cols={2}>
+  <Card title="Trusted input">
+    click / type / press / hover / scroll / select / check / drag — each runs
+    its proper human-grade event chain instead of a blunt synthetic click.
+  </Card>
+  <Card title="Structured DOM snapshots">
+    Every rebuilt snapshot carries accessible name/value/checked/disabled,
+    CSS selectors and rects — the agent gets structure, not screenshot
+    guessing.
+  </Card>
+  <Card title="evaluate / wait_for / state / dialog">
+    Run JS in the page, wait on conditions, read page state, handle dialogs.
+  </Card>
+  <Card title="Live page screenshots">
+    Page.captureScreenshot shoots the live panel page — login state and
+    scroll position are exactly what you see.
+  </Card>
+</Columns>
+
+## Engineering details (why it's stable)
+
+- **CDP-on-guest**: lazy attach, idle release, detach before DevTools opens
+  and on crash — debugging and the agent never fight;
+- `<webview>` guest binding + **owner-session validation**: background
+  sessions and subagents can't steal the foreground page;
+- Navigation redirects count as success; cancellation is wired end to end;
+  `browser:viewport` events keep the viewport in sync;
+- fill/fixed viewport: CSS size is the viewport, so screenshots and snapshot
+  coordinates agree.
+
+## Permissions & downloads
+
+- **Permission allowlist**: site permissions are asked inside the panel;
+  sites you've approved don't ask again;
+- **Downloads** land in `<appData>/browser-downloads/`, not scattered in your
+  downloads folder.
+
+<Note>
+  In ACP mode (launched by an editor) browser tools are not registered — the
+  panel is desktop-UI-only. Pure-text models pair with pixel screenshots /
+  see_image, see [Vision assist](/en/features/vision).
+</Note>
