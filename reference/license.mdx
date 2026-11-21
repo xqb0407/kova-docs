@@ -1,6 +1,6 @@
 ---
 title: "开源许可与致谢"
-description: "Apache License 2.0，二次开发时的声明要求，以及项目所依赖的开源项目。"
+description: "Apache License 2.0，二次开发与分发时的声明要求，第三方组件致谢，以及商标与品牌使用说明。"
 ---
 
 ## 许可证
@@ -9,25 +9,34 @@ description: "Apache License 2.0，二次开发时的声明要求，以及项目
 完整文本见仓库根目录的 `LICENSE`。
 
 <Warning>
-  基于本仓库二次开发并分发时，请保留 `LICENSE` 文件与上游依赖各自的许可声明。
-  同步到 GitHub 发布仓时用 `./scripts/sync-github.sh`（见脚本头注释）。
+  基于本仓库二次开发并分发时，请保留 `LICENSE`、`NOTICE` 与
+  `THIRD-PARTY-NOTICES.md`，并履行各第三方许可项下的义务
+  （完整依赖清单由安装树自动生成，随版本更新）。
 </Warning>
 
 ## 主要依赖
 
-本项目站在这些开源项目的肩膀上（完整清单见各包 `package.json` 与 `THIRD-PARTY-NOTICES.md`）：
+本项目站在这些开源项目的肩膀上（完整清单见仓库根目录的
+[THIRD-PARTY-NOTICES.md](https://github.com/xqb0407/kova/blob/main/THIRD-PARTY-NOTICES.md)，
+共 1800+ 包，逐包标注许可）：
 
 | 层 | 项目 |
 | --- | --- |
 | 运行时与打包 | [Bun](https://bun.sh) · [Electron](https://www.electronjs.org/) · [Next.js](https://nextjs.org) · [React](https://react.dev) |
 | 移动端 | [Expo](https://expo.dev) · [React Native](https://reactnative.dev) |
 | 对话界面 | [assistant-ui](https://assistant-ui.com) · [Vercel AI SDK](https://ai-sdk.dev) · [Streamdown](https://streamdown.ai) · [Radix UI](https://radix-ui.com) / [shadcn/ui](https://ui.shadcn.com) · [lucide-react](https://lucide.dev) · [framer-motion](https://motion.dev) · [cmdk](https://cmdk.paco.me) |
-| Agent 运行时 | [pi-agent-core / pi-ai](https://www.npmjs.com/package/@earendil-works/pi-agent-core) · [Model Context Protocol SDK](https://github.com/modelcontextprotocol) · [croner](https://github.com/Hexagon/croner) |
+| Agent 运行时 | [pi-agent-core / pi-ai](https://github.com/earendil-works/pi)（vendored，MIT）· [Model Context Protocol SDK](https://github.com/modelcontextprotocol) · [croner](https://github.com/Hexagon/croner) |
 | 编辑器与终端 | [CodeMirror 6](https://codemirror.net) · [xterm.js](https://xtermjs.org) |
-| 办公插件 | [Univer](https://univer.ai) · [LeaferJS](https://www.leaferjs.com) · [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) · [exceljs](https://exceljs.dev) · [jszip](https://stuk.github.io/jszip/) |
+| 官方插件 | 独立仓库分发（幻灯片/表格、无限画布、UI 设计工作台），依赖与声明见插件仓库 |
 | 数据与状态 | [zustand](https://zustand.docs.pmnd.rs) · [zod](https://zod.dev) · [Recharts](https://recharts.org) · [node:sqlite](https://nodejs.org/api/sqlite.html) / [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) · Electron [safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) |
 | 3D 与视觉效果 | [Three.js](https://threejs.org) / [@react-three/fiber](https://r3f.docs.pmnd.rs) |
-| 中文字体 | [霞鹜文楷](https://github.com/lxgw/LxgwWenKai) · [Noto Sans/Serif SC](https://fonts.google.com/noto) · [Geist](https://vercel.com/geist) · [Inter](https://rsms.me/inter/) · [JetBrains Mono](https://www.jetbrains.com/mono/) |
+| 字体（OFL） | [Noto Sans/Serif SC](https://fonts.google.com/noto) · [Geist](https://vercel.com/geist) · [Inter](https://rsms.me/inter/) · [JetBrains Mono](https://www.jetbrains.com/mono/) · [Open Sans](https://fonts.google.com/noto) · [Roboto](https://fonts.google.com/noto) |
+
+## 商标与品牌
+
+「扣瓦」「Kova」名称与黑猫吉祥物图形属于本项目。文档与站点中出现的
+第三方项目名称、Logo 与商标归各自权利人所有，仅作描述性使用，
+不构成任何隶属或背书关系。
 
 ## 致谢
 
@@ -39,20 +48,25 @@ description: "Apache License 2.0，二次开发时的声明要求，以及项目
     这两个项目的 issue 区与文档是本仓库许多疑难的第一答案来源。
   </Accordion>
   <Accordion title="Earendil Works 的 pi 项目">
-    sidecar 的会话转录、上下文压缩、子代理等核心设计移植/参考自其
-    agent-runtime。代码注释中大量 `PI-Desktop 同设计` 标注即出处所在。
+    Agent 运行时（pi-ai / pi-agent-core）以源码形式 vendored 进本仓库
+    （MIT，上游版权声明与许可文件均已保留），会话转录、上下文压缩、
+    子代理等核心设计同源。
   </Accordion>
   <Accordion title="Model Context Protocol">
     规范及其 TypeScript SDK，让工具生态的接入有章可循。
   </Accordion>
-  <Accordion title="Univer（DreamNum）与 LeaferJS 团队">
-    表格与画布引擎的质量直接决定了办公插件的上限。
+  <Accordion title="VoltAgent 的 awesome-design-md（MIT）">
+    界面主题预设取自该项目的公开网站风格逆向合集，本站的
+    外观主题能力得益于此。
   </Accordion>
-  <Accordion title="霞鹜文楷作者 lxgw 及所有创作者">
-    以及所有字体、图标、组件的创作者。
+  <Accordion title="@amaster.ai/pi-task-scheduler（Apache-2.0）">
+    自动化调度的核心，vendored 后按上游许可要求以 NOTICE 声明。
+  </Accordion>
+  <Accordion title="所有字体、图标与组件的创作者">
+    Noto、Geist、Inter、JetBrains Mono、lucide 以及每一位开源创作者。
   </Accordion>
   <Accordion title="每一个认真写 issue、提 PR、在讨论区回答问题的人">
-    软件因分享而完整。若你基于本模板继续开发，也欢迎把这份谢意传递下去。
+    软件因分享而完整。若你基于本仓库继续开发，也欢迎把这份谢意传递下去。
   </Accordion>
 </AccordionGroup>
 
@@ -64,5 +78,11 @@ description: "Apache License 2.0，二次开发时的声明要求，以及项目
   </Card>
   <Card title="看仓库" icon="github" href="https://github.com/xqb0407/kova">
     README 里有完整的仓库结构、环境要求与开发命令。
+  </Card>
+  <Card title="更新日志" icon="news" href="https://github.com/xqb0407/kova/blob/main/CHANGELOG.md">
+    CHANGELOG 按版本记录变更；发版规范见 docs/versioning.md。
+  </Card>
+  <Card title="安全报告" icon="shield" href="https://github.com/xqb0407/kova/security">
+    漏洞告警由 Dependabot 持续监控；敏感问题请勿公开 issue，请联系维护者。
   </Card>
 </CardGroup>

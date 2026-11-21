@@ -1,0 +1,123 @@
+---
+title: "ACP (Agent Client Protocol)"
+description: "The same sidecar binary switches to a standard ACP agent with --acp: launched by editors like Zed, stdio JSON-RPC, credential sharing, per-tool approvals."
+---
+
+`kova-worker` (the same sidecar binary) can be launched by editors (Zed and
+others) as a subprocess acting as an **ACP agent**: the desktop drives it with
+the private NDJSON protocol, while `--acp` switches it to standard
+**ACP v1** (JSON-RPC 2.0 over stdio, `@agentclientprotocol/sdk`).
+
+The protocol boundary is clean: stdout carries only JSON-RPC; logs and
+diagnostics go to stderr.
+
+## Launch
+
+```bash
+# From source
+cd apps/sidecar/pi-agent && bun run acp
+
+# Built binary
+kova-worker --acp
+
+# Or via environment variable
+KOVA_ACP=1 kova-worker
+```
+
+### Zed configuration example
+
+```json
+{
+  "agent_servers": {
+    "Kova": {
+      "command": "/path/to/kova-worker",
+      "args": ["--acp"],
+      "env": { "ANTHROPIC_API_KEY": "sk-ant-..." }
+    }
+  }
+}
+```
+
+`command` points at `apps/electron/binaries/kova-worker` (inside the app
+resources for packaged builds); append `--data-dir <path>` for an isolated
+data directory.
+
+## Data directory & credentials
+
+ACP mode has no Electron host and **enforces local SQLite**. Data directory
+priority:
+
+1. `--data-dir <path>`
+2. `KOVA_ACP_DATA_DIR`
+3. `KOVA_DATA_DIR`
+4. Default `~/.kova/acp` (permissions 0700)
+
+Inside: `state.db` (session index / credentials / models / kv), `sessions/`
+(JSONL transcripts), `task-workspace/` and `library/`.
+
+### Sharing models & credentials with the desktop
+
+The desktop exports credentials / custom providers / model entries to a
+shared file:
+
+```
+~/.kova/credentials.json   # 0600; KOVA_CREDENTIALS_FILE overrides the path
+```
+
+- The desktop is the **single writer**: any settings change atomically
+  rebuilds the whole file, and **deletions propagate too** (providers/keys
+  removed on the desktop disappear on the ACP side);
+- Key values are encrypted with a machine-derived key (`kenc:v1:`,
+  AES-256-GCM) — any process of the same user can decrypt, which is the
+  prerequisite for multi-client sharing; file permissions only protect
+  against other users;
+- Priority: **shared file > environment variables**; on machines without the
+  desktop, use provider env vars (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+  `DEEPSEEK_API_KEY`, …);
+- ⚠️ **Never** point `--data-dir` at a running desktop's data directory —
+  desktop credentials are Electron `aes:v1` encrypted and undecryptable on the
+  ACP side, and both processes would write the same database;
+- The secrets vault (for bash injection) is outside the shared scope.
+
+## Support matrix
+
+**ACP methods**: `initialize` / `session/new` / `session/load` (history
+replay) / `session/prompt` (text/image/resource) / `session/cancel` /
+`session/set_mode` (agent / plan / ask) / `session/set_model` /
+`session/update` / `session/request_permission` — all supported; `fs/*` and
+`terminal/*` are unused — the sidecar ships its own read/write/edit/bash.
+
+**Internal tools**: bash, read/write/edit, glob/grep, WebFetch/WebSearch, the
+MCP gateway (reads `~/.kova/mcp.json` and workspace `.mcp.json`), the four
+subagent tools, todo (mapped to ACP `plan`), skills/memory/image generation
+and vision all work; browser control, screenshots and the file panel are
+desktop-UI-only and **not registered**; the automation scheduler does not
+start in ACP processes.
+
+**Approvals**: internal per-tool approvals translate to
+`session/request_permission` — approve → `allow_once`, allow & remember →
+`allow_always`, reject → settled as `tool_confirm{approved:false}`; cancel or
+timeout settles as a rejection to avoid hangs.
+
+## Known limitations
+
+- `mcpServers` passed to `session/new` / `load` are not wired yet — put
+  servers in `~/.kova/mcp.json` or the workspace `.mcp.json`;
+- The `Question` tool degrades to a text prompt + cancel; `plan_exit`
+  rejection reasons cannot travel through the ACP permission card;
+- Goal mode is not exposed over ACP; loading a goal-mode session degrades to
+  agent;
+- Don't run multiple ACP processes on the same data directory working the
+  same session (no cross-process lock).
+
+## Troubleshooting
+
+- Logs go to stderr (visible in the editor's log panel); `PI_LOG_LEVEL=delta`
+  for token-level logging;
+- No models available: confirm the provider's API key is in the launch
+  environment; try `ANTHROPIC_API_KEY=... kova-worker --acp` manually and
+  watch stderr;
+- Tools not executing: make sure `--data-dir` does not point at a running
+  desktop's data directory;
+- Built artifacts carry smoke checks: `bun run build` runs an NDJSON ping and
+  an ACP initialize in sequence.
