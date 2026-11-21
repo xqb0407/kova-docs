@@ -1,0 +1,80 @@
+---
+title: "Unified inbox"
+description: "Everything that needs you, and everything that just finished — collected from every session into one cross-session, cross-device, actionable, persistent inbox."
+---
+
+While agents work in the background, the worst outcome isn't an error — it's
+**not knowing that they need you**: an approval stuck in a session you never
+opened, a subagent report nobody read, an automation failure buried in run
+history. The unified inbox collects all of it into one sidebar entry point.
+
+## What it collects (v1, six kinds)
+
+<Columns cols={2}>
+  <Card title="Approvals (P0)">
+    Per-tool approvals, MCP gateway approvals, plan_exit confirmations.
+    Actions: approve / reject / allow & remember / open session.
+  </Card>
+  <Card title="Questions (P0)">
+    Pending `Question` tool prompts.
+    Actions: answer / cancel / open session.
+  </Card>
+  <Card title="Goals (P0/P1)">
+    Goal paused, blocked, or waiting for criteria confirmation.
+    Actions: resume / confirm or adjust criteria.
+  </Card>
+  <Card title="Automations (P1/P2)">
+    A run succeeded or failed.
+    Actions: open the run session / re-run / archive.
+  </Card>
+  <Card title="Subagents (P1/P2)">
+    A subagent reached a final state (completed / failed / truncated /
+    stopped / interrupted). Actions: open parent / open report / archive.
+  </Card>
+  <Card title="Background tasks (P1/P2)">
+    A background bash task exited (non-zero = worth looking).
+    Actions: open session / archive.
+  </Card>
+</Columns>
+
+Deliberately **not collected**: every normal turn end, automations in
+running/queued state, subagent intermediate activity, ordinary tool calls —
+that would drown out the things that actually need you.
+
+## Design principles
+
+<Columns cols={2}>
+  <Card title="Actionable first">
+    Approvals still go through `tool_confirm`, answers through
+    `question_answer`, goal resumes through `goal_resume` — the inbox is not
+    a new permission channel and **cannot wave anything through**.
+  </Card>
+  <Card title="Source of truth wins">
+    Item state is always derived from the source: approvals from the session
+    transcript, automations from run history, subagents from activity files.
+    If the source settled, the inbox won't stay pending.
+  </Card>
+  <Card title="Cross-device">
+    Desktop, remote web and mobile see the same items and the same
+    read/archived state (the `inbox_changed` frame is whitelisted for remote
+    broadcast).
+  </Card>
+  <Card title="Persistent & quiet">
+    Nothing is lost across restarts, refreshes or devices; items whose source
+    vanished show as "expired" instead of erroring. One item per event,
+    no repeats after settlement.
+  </Card>
+</Columns>
+
+<Note>
+  The inbox is disabled in ACP mode (when launched by an editor) — editors
+  have their own permission UI, and the projection no-ops there to avoid
+  duplicate prompts.
+</Note>
+
+## Relation to unread badges
+
+The sidebar badge upgrades from localStorage unread state to the inbox's
+persistent one: "needs action" items (P0 / failed P1) count as strong
+reminders, "just finished" items (P2 success) as weak ones. Step away for an
+hour, come back, check the inbox — no need to dig through sessions one by one.

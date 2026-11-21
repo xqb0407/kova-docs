@@ -192,7 +192,9 @@
                 "icon": "bolt",
                 "pages": [
                   "features/conversation",
+                  "features/inbox",
                   "features/agent-engine",
+                  "features/memory",
                   "features/agent-loop",
                   "features/model-providers",
                   "features/websearch",
@@ -428,7 +430,9 @@
                 "icon": "bolt",
                 "pages": [
                   "en/features/conversation",
+                  "en/features/inbox",
                   "en/features/agent-engine",
+                  "en/features/memory",
                   "en/features/agent-loop",
                   "en/features/model-providers",
                   "en/features/websearch",
