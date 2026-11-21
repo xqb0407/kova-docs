@@ -1,0 +1,58 @@
+---
+title: "Backup & restore"
+description: "One click packs all your data into a .piabk archive (passphrase-encrypted), pushes it to S3-compatible storage or WebDAV; restore stages and swaps in on restart."
+---
+
+A local-first app needs real backups. Backup packs everything into a
+**`.piabk`** archive (tar.gz + AES-256-GCM, optional passphrase) and pushes it
+to a remote target. Restore goes through "stage, then swap in on restart" —
+it only takes effect after validation passes.
+
+## What gets backed up
+
+**Always** (core assets):
+
+- `state.db` — settings, session index, encrypted credentials, usage stats;
+- `sessions/*.jsonl` — every conversation transcript.
+
+**Optional, per switch**:
+
+- task-workspace, library, personal config (`~/.kova/` identity/memory/MCP/
+  approvals + pet/site permissions/appearance themes);
+- skills and plugins;
+- checkpoints.
+
+## Targets
+
+| Target | Notes |
+| --- | --- |
+| **S3-compatible storage** | PUT/GET/DELETE/ListObjectsV2, path-style; secret keys are cleared from the UI after saving and never echoed |
+| **WebDAV** | Recursive directory creation, PROPFIND probing, idempotent deletes |
+
+Progress is reported per stage (pack → encrypt → upload). Every archive
+carries a payload SHA256, verified per file before restore.
+
+## Restore: stage, then swap in
+
+Restore never hot-swaps in place — half-applied restores are the dangerous
+kind:
+
+1. Pick a `.piabk` (or pull one from the remote target) → unpack to a
+   staging directory;
+2. Verify per-file hashes, trim dangling JSONL lines;
+3. Validated → mark "pending restore" → **atomically swapped in on app
+   restart**;
+4. Only partitions actually present in the archive are swapped in — restoring
+   an older archive onto a newer version never deletes newer data.
+
+<Warning>
+  The OS keychain master key **does not travel with backups** (it belongs to
+  the machine). After restoring on a new machine, re-enter API keys; ciphertext
+  credentials that can't be decrypted are cleaned up automatically, while
+  plaintext config (custom providers, etc.) is preserved.
+</Warning>
+
+## Database consistency
+
+Before packing, the backup runs a WAL checkpoint + `VACUUM INTO` snapshot —
+you back up a consistent state, not a half-written database file.
