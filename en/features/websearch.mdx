@@ -1,0 +1,71 @@
+---
+title: "Web search"
+description: "Give the agent a swappable search service: official API presets, custom aggregation endpoints, encrypted keys, and an instant test button."
+---
+
+WebSearch lets the agent search the web. The design is **one configurable
+service**: you pick a provider, and every web search the agent runs goes
+through it. Switching is a settings change — no code, no restart.
+
+Presets are **official APIs only** — no third-party proxies or aggregators
+are built in. That category is served by the custom API option, filled in
+explicitly by you.
+
+## Presets
+
+In Settings → Agent → Web search:
+
+| Service | Endpoint | Needs key |
+| --- | --- | --- |
+| **Tavily** (default) | `api.tavily.com` | ✅ |
+| DeepSeek Search | `api.deepseek.com` | ✅ |
+| Brave Search | `api.search.brave.com` | ✅ |
+| Exa | `api.exa.ai` | ✅ |
+| SearXNG | self-hosted | ❌ (optional) |
+
+The default is **Tavily** — an official API you can register for in minutes.
+Switching takes effect immediately, and each provider keeps its own saved key.
+
+## Key safety
+
+API keys never live in the config file:
+
+- Keys are stored in the **encrypted credential table** (namespaced per
+  service), sharing the same encryption scheme as model keys —
+  AES-256-GCM in a local database, wrapped by the system keychain;
+- The settings JSON contains only the service and endpoint — never a
+  plaintext key;
+- The page shows whether a key is configured plus a masked preview, and
+  never echoes it back.
+
+See [Security & keys](/en/features/security).
+
+## Custom API
+
+For aggregation endpoints, intranet gateways, or self-hosted search, pick
+Custom API:
+
+- Request **URL / method / headers / body template** are all configurable,
+  with `{{query}}` / `{{count}}` / `{{apiKey}}` placeholders;
+- The response is extracted via the field paths you declare
+  (`resultsPath` / `titlePath` / `urlPath` …), falling back to generic
+  parsing (JSON arrays / markdown blocks) when no structure matches;
+- GET requests can carry the key in the query string — error messages are
+  automatically redacted.
+
+## Test button safety boundary
+
+The Test button in settings runs a live search with the **draft config**
+without saving it. Safety rules:
+
+- A saved key is only sent to **the same service at the same endpoint**, or
+  to that service's **official endpoint**;
+- Drafts with modified endpoints never receive a key — a compromised
+  renderer cannot exfiltrate the key to an arbitrary third party through
+  the test button.
+
+## Master switch
+
+Turning web search off removes WebSearch from the active session's tool
+list — main agent, subagents, plan mode and `run_code` all lose the tool
+at once. Turning it back on restores it immediately, no restart needed.

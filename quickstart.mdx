@@ -3,6 +3,23 @@ title: "快速开始"
 description: "环境要求、安装桌面端、从源码跑起来，以及 dev 与正式版的数据隔离。"
 ---
 
+## 安装桌面端（推荐）
+
+不想折腾源码？正式版安装包在 GitHub Releases 直接下载：
+
+| 平台 | 下载 |
+| --- | --- |
+| macOS（Apple Silicon） | [Kova_1.2.0_arm64.dmg](https://github.com/xqb0407/kova/releases/download/v1.2.0/Kova_1.2.0_arm64.dmg) |
+| Windows（x64） | [Kova_1.2.0_x64-setup.exe](https://github.com/xqb0407/kova/releases/download/v1.2.0/Kova_1.2.0_x64-setup.exe) |
+
+SHA256 校验文件（`SHA256SUMS-macos.txt` / `SHA256SUMS-windows.txt`）在同一页面。
+
+- **macOS**：ad-hoc 签名，首次打开若被 Gatekeeper 拦截 → 右键点击应用 →「打开」
+- **Windows**：未签名，SmartScreen 提示时选「更多信息 → 仍要运行」
+
+装好后在应用内配置一个模型 Key 就能开始对话。下面的源码构建路径，
+适合想改代码或做二次分发的场景。
+
 ## 环境要求
 
 从源码运行需要三样东西：
