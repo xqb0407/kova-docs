@@ -1,6 +1,6 @@
 ---
 title: "License & acknowledgements"
-description: "Apache License 2.0, what you must preserve when redistributing, and the open-source projects Kova builds on."
+description: "Apache License 2.0, what you must preserve when redistributing, third-party acknowledgements, and trademark & brand usage."
 ---
 
 ## License
@@ -10,68 +10,87 @@ Kova is released under the
 the `LICENSE` file at the repository root.
 
 <Warning>
-  If you redistribute a derivative, keep the `LICENSE` file along with the license
-  notices of the upstream dependencies. Use `./scripts/sync-github.sh` when syncing to
-  the GitHub publish mirror (see the script's header comment).
+  If you redistribute a derivative, keep the `LICENSE`, `NOTICE` and
+  `THIRD-PARTY-NOTICES.md` files and fulfill each third-party license's
+  obligations (the full dependency inventory is generated from the install
+  tree and updated per release).
 </Warning>
 
-## Main dependencies
+## Major dependencies
 
-This project stands on the shoulders of the following (the full list lives in each
-package's `package.json` and `THIRD-PARTY-NOTICES.md`):
+This project stands on the shoulders of these open-source projects (the full
+inventory lives in
+[THIRD-PARTY-NOTICES.md](https://github.com/xqb0407/kova/blob/main/THIRD-PARTY-NOTICES.md) —
+1800+ packages, each with its license):
 
 | Layer | Projects |
 | --- | --- |
 | Runtime & packaging | [Bun](https://bun.sh) · [Electron](https://www.electronjs.org/) · [Next.js](https://nextjs.org) · [React](https://react.dev) |
 | Mobile | [Expo](https://expo.dev) · [React Native](https://reactnative.dev) |
-| Conversation UI | [assistant-ui](https://assistant-ui.com) · [Vercel AI SDK](https://ai-sdk.dev) · [Streamdown](https://streamdown.ai) · [Radix UI](https://radix-ui.com) / [shadcn/ui](https://ui.shadcn.com) · [lucide-react](https://lucide.dev) · [framer-motion](https://motion.dev) · [cmdk](https://cmdk.paco.me) |
-| Agent runtime | [pi-agent-core / pi-ai](https://www.npmjs.com/package/@earendil-works/pi-agent-core) · [Model Context Protocol SDK](https://github.com/modelcontextprotocol) · [croner](https://github.com/Hexagon/croner) |
+| Chat surface | [assistant-ui](https://assistant-ui.com) · [Vercel AI SDK](https://ai-sdk.dev) · [Streamdown](https://streamdown.ai) · [Radix UI](https://radix-ui.com) / [shadcn/ui](https://ui.shadcn.com) · [lucide-react](https://lucide.dev) · [framer-motion](https://motion.dev) · [cmdk](https://cmdk.paco.me) |
+| Agent runtime | [pi-agent-core / pi-ai](https://github.com/earendil-works/pi) (vendored, MIT) · [Model Context Protocol SDK](https://github.com/modelcontextprotocol) · [croner](https://github.com/Hexagon/croner) |
 | Editor & terminal | [CodeMirror 6](https://codemirror.net) · [xterm.js](https://xtermjs.org) |
-| Office plugins | [Univer](https://univer.ai) · [LeaferJS](https://www.leaferjs.com) · [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) · [exceljs](https://exceljs.dev) · [jszip](https://stuk.github.io/jszip/) |
+| Official plugins | Distributed from a separate repository (slides/sheets, infinite canvas, UI design workbench) — dependencies and notices live there |
 | Data & state | [zustand](https://zustand.docs.pmnd.rs) · [zod](https://zod.dev) · [Recharts](https://recharts.org) · [node:sqlite](https://nodejs.org/api/sqlite.html) / [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) · Electron [safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) |
-| 3D & visual effects | [Three.js](https://threejs.org) / [@react-three/fiber](https://r3f.docs.pmnd.rs) |
-| CJK typefaces | [Lxgw WenKai](https://github.com/lxgw/LxgwWenKai) · [Noto Sans/Serif SC](https://fonts.google.com/noto) · [Geist](https://vercel.com/geist) · [Inter](https://rsms.me/inter/) · [JetBrains Mono](https://www.jetbrains.com/mono/) |
+| 3D & visuals | [Three.js](https://threejs.org) / [@react-three/fiber](https://r3f.docs.pmnd.rs) |
+| Fonts (OFL) | [Noto Sans/Serif SC](https://fonts.google.com/noto) · [Geist](https://vercel.com/geist) · [Inter](https://rsms.me/inter/) · [JetBrains Mono](https://www.jetbrains.com/mono/) · [Open Sans](https://fonts.google.com/noto) · [Roboto](https://fonts.google.com/noto) |
+
+## Trademarks & brand
+
+The names 「扣瓦」/ "Kova" and the black-cat mascot artwork belong to this
+project. Third-party project names, logos and trademarks appearing in the docs
+and site belong to their respective owners and are used descriptively only —
+no affiliation or endorsement.
 
 ## Acknowledgements
 
-Kova borrows and depends heavily on community work, from architecture down to detail.
-Special thanks:
+From architecture to details, Kova borrows heavily from and depends on
+community work. Special thanks:
 
 <AccordionGroup>
   <Accordion title="assistant-ui and the Electron community">
-    They respectively carry the conversational UI and the cross-platform desktop
-    runtime. Their issue trackers and documentation are the first place many hard
-    questions in this repository get answered.
+    They carry the chat UI and the cross-platform desktop runtime.
+    Their issues and docs are the first answer to many hard questions here.
   </Accordion>
-  <Accordion title="Earendil Works' pi project">
-    The sidecar's session transcripts, context compaction, and subagent design are
-    ported from or modelled on their agent-runtime. The many `PI-Desktop 同设计`
-    comments in the code mark exactly where.
+  <Accordion title="The pi project by Earendil Works">
+    The agent runtime (pi-ai / pi-agent-core) is vendored into this repository
+    (MIT, upstream copyright and license preserved). Session transcripts,
+    context compaction and subagents share the same design lineage.
   </Accordion>
   <Accordion title="Model Context Protocol">
-    The specification and its TypeScript SDK, which give tool integration a shape to
-    follow.
+    The spec and its TypeScript SDK made the tool ecosystem legible.
   </Accordion>
-  <Accordion title="Univer (DreamNum) and the LeaferJS team">
-    The quality of their spreadsheet and canvas engines sets the ceiling for the office
-    plugins.
+  <Accordion title="VoltAgent's awesome-design-md (MIT)">
+    The interface theme presets derive from their public website-style
+    write-ups — the appearance theme capability builds on that work.
   </Accordion>
-  <Accordion title="lxgw, author of Lxgw WenKai, and every other creator">
-    Everyone who made the typefaces, icons, and components.
+  <Accordion title="@amaster.ai/pi-task-scheduler (Apache-2.0)">
+    The automation scheduling core, vendored with the upstream NOTICE
+    declaration as its license requires.
   </Accordion>
-  <Accordion title="Everyone who files a careful issue, opens a PR, or answers in discussions">
-    Software is completed by being shared. If you build on this template, please pass
-    the thanks along.
+  <Accordion title="Every font, icon and component author">
+    Noto, Geist, Inter, JetBrains Mono, lucide, and every open creator.
+  </Accordion>
+  <Accordion title="Everyone who writes careful issues, PRs, and answers">
+    Software is complete because it is shared. If you build on this repo,
+    pass the gratitude on.
   </Accordion>
 </AccordionGroup>
 
 ## Contributing
 
 <CardGroup cols={2}>
-  <Card title="Open an issue" icon="bug" href="https://github.com/xqb0407/kova/issues">
-    Include reproduction steps, the version you are on, and the behaviour you expected.
+  <Card title="File an issue" icon="bug" href="https://github.com/xqb0407/kova/issues">
+    Include reproduction steps, your version, and the behavior you expected.
   </Card>
-  <Card title="Browse the repo" icon="github" href="https://github.com/xqb0407/kova">
-    The README documents the repository layout, prerequisites, and development commands.
+  <Card title="Read the repo" icon="github" href="https://github.com/xqb0407/kova">
+    The README covers repo structure, requirements and dev commands.
+  </Card>
+  <Card title="Changelog" icon="news" href="https://github.com/xqb0407/kova/blob/main/CHANGELOG.md">
+    Changes are recorded per release; release conventions in docs/versioning.md.
+  </Card>
+  <Card title="Security reports" icon="shield" href="https://github.com/xqb0407/kova/security">
+    Vulnerabilities are watched by Dependabot; please contact the maintainer
+    privately instead of opening public issues for sensitive reports.
   </Card>
 </CardGroup>

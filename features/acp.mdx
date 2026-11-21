@@ -1,0 +1,105 @@
+---
+title: "ACP（Agent Client Protocol）"
+description: "同一个 sidecar 二进制用 --acp 切换为标准 ACP agent，被 Zed 等编辑器以子进程拉起：stdio JSON-RPC、凭据自动共享、逐工具审批。"
+---
+
+`kova-worker`（同一个 sidecar 二进制）可以被编辑器（Zed 等）以子进程方式
+作为 **ACP agent** 拉起：桌面端用私有 NDJSON 协议驱动它，加 `--acp` 则切换为
+标准 **ACP v1**（JSON-RPC 2.0 over stdio，`@agentclientprotocol/sdk`）。
+
+协议边界很干净：stdout 只输出 JSON-RPC，日志与诊断全部走 stderr。
+
+## 启动
+
+```bash
+# 源码直跑
+cd apps/sidecar/pi-agent && bun run acp
+
+# 编译产物
+kova-worker --acp
+
+# 环境变量形式也可以
+KOVA_ACP=1 kova-worker
+```
+
+### Zed 配置示例
+
+```json
+{
+  "agent_servers": {
+    "Kova": {
+      "command": "/path/to/kova-worker",
+      "args": ["--acp"],
+      "env": { "ANTHROPIC_API_KEY": "sk-ant-..." }
+    }
+  }
+}
+```
+
+`command` 指向 `apps/electron/binaries/kova-worker`（打包版在应用资源目录里）；
+需要隔离数据目录时追加 `--data-dir <path>`。
+
+## 数据目录与凭据
+
+ACP 模式没有 Electron 宿主，**强制走本地 SQLite**。数据目录优先级：
+
+1. `--data-dir <path>`
+2. `KOVA_ACP_DATA_DIR`
+3. `KOVA_DATA_DIR`
+4. 默认 `~/.kova/acp`（目录权限 0700）
+
+目录里是 `state.db`（会话索引/凭据/模型/kv）、`sessions/`（JSONL 转录）、
+`task-workspace/` 与 `library/`。
+
+### 与桌面端共享模型与凭据
+
+桌面端把凭据 / 自定义 provider / 模型条目自动导出到共享文件：
+
+```
+~/.kova/credentials.json   # 0600；KOVA_CREDENTIALS_FILE 可改路径
+```
+
+- 桌面端是**唯一写入者**：设置页的任何变更都会原子重建整份文件，
+  **删除同样传播**（桌面删掉的 provider/key 在 ACP 侧同步移除）；
+- Key 值用机器派生密钥加密（`kenc:v1:`，AES-256-GCM）——同用户的任何进程
+  都能解密，这是多端共用的前提；文件权限只防其他用户；
+- 优先级：**共享文件 > 环境变量**；没有桌面端的机器直接用 provider 环境变量
+  （`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`DEEPSEEK_API_KEY` 等）；
+- ⚠️ **不要**把 `--data-dir` 指向正在运行的桌面端数据目录——桌面凭据是
+  Electron `aes:v1` 加密的，ACP 侧没有主密钥解不开，且两个进程会同时写库；
+- 密钥库（secrets，bash 注入用）不在共享范围。
+
+## 支持矩阵
+
+**ACP 方法**：`initialize` / `session/new` / `session/load`（历史回放）/
+`session/prompt`（文本/图片/resource）/ `session/cancel` / `session/set_mode`
+（agent / plan / ask）/ `session/set_model` / `session/update` /
+`session/request_permission` 全部支持；`fs/*` 与 `terminal/*` 不使用——
+sidecar 自带 read/write/edit/bash。
+
+**内部工具**：bash、read/write/edit、glob/grep、WebFetch/WebSearch、
+MCP 网关（读 `~/.kova/mcp.json` 与工作区 `.mcp.json`）、子代理四件套、
+todo（映射为 ACP `plan`）、技能/记忆/图片生成与识图全部可用；
+浏览器驱动、屏幕截图与文件面板是桌面 UI 专属，**不注册**；
+automation 调度器在 ACP 进程不启动。
+
+**审批**：内部逐工具审批翻译为 `session/request_permission`——
+批准 → `allow_once`，允许并记住 → `allow_always`，拒绝 → 按
+`tool_confirm{approved:false}` 结算；取消或超时按拒绝结算，避免挂起。
+
+## 已知限制
+
+- `session/new` / `load` 传入的 `mcpServers` 暂不接入——请写进
+  `~/.kova/mcp.json` 或工作区 `.mcp.json`；
+- `Question` 工具降级为文本提示 + 取消；`plan_exit` 的拒绝理由
+  无法通过 ACP 权限卡传递；
+- goal 模式不在 ACP 暴露，载入到 goal 档会强制降为 agent；
+- 同一数据目录不要同时跑多个 ACP 进程操作同一会话（无跨进程锁）。
+
+## 排障
+
+- 日志全在 stderr（编辑器日志面板可见）；`PI_LOG_LEVEL=delta` 看 token 级日志；
+- 没有模型可选：确认 provider 的 API key 在启动环境里，可以
+  `ANTHROPIC_API_KEY=... kova-worker --acp` 手动起进程观察 stderr；
+- 工具不执行：确认 `--data-dir` 没有指向正在运行的桌面端数据目录；
+- 构建产物自带冒烟：`bun run build` 会依次跑 NDJSON ping 与 ACP initialize。
