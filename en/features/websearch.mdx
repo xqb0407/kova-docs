@@ -53,6 +53,20 @@ Custom API:
 - GET requests can carry the key in the query string — error messages are
   automatically redacted.
 
+### JSON / cURL quick config
+
+Too many form fields? Custom services support two whole-definition modes:
+
+- **JSON editor**: export the current definition (with `$schema`
+  validation), edit, and "Apply" writes it back to the form;
+- **Paste cURL to import**: copy a curl command from your terminal and the
+  method / URL / headers / body fill automatically — replace the query value
+  with `{{query}}` after importing.
+
+`resultsPath` also handles gateways that stash the result array as a
+**stringified JSON** field (like `{"result":"[{…}]"}`) — the app
+double-parses it automatically.
+
 ## Test button safety boundary
 
 The Test button in settings runs a live search with the **draft config**
